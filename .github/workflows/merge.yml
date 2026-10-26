@@ -1,0 +1,121 @@
+name: Merge checks
+
+on:
+  push:
+    branches: [main, master, develop, test]
+
+concurrency:
+  group: merge-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  quality:
+    name: Lint, typecheck, tests (>= 80% coverage)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Type-check
+        run: npx tsc --noEmit -p .
+
+      - name: Unit tests with coverage gate (min 80%)
+        run: npm run test:cov
+
+  migration-check:
+    name: Migrations apply on a clean Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: simulai
+          POSTGRES_PASSWORD: simulai
+          POSTGRES_DB: dev
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U simulai" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: 'postgresql://simulai:simulai@localhost:5432/dev?schema=simulai_service'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: prisma migrate deploy (twice — must be idempotent)
+        run: npx prisma migrate deploy && npx prisma migrate deploy
+
+      - name: Seed (twice — must be idempotent)
+        env:
+          SEED_ADMIN_EMAIL: admin@example.com
+          SEED_ADMIN_PASSWORD: ci-only-Password1!
+        run: npm run prisma:seed && npm run prisma:seed
+
+  dependency-audit:
+    name: Dependency vulnerability audit (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm audit — production dependencies (report only)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+
+
+
+
+  docker-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: simulai-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image — OS packages (Trivy, blocking)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: simulai-backend:${{ github.sha }}
+          vuln-type: 'os'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true

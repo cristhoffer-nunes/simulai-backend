@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./keys:/app/keys:ro
+    networks:
+      - shared-postgres-net
+
+networks:
+  # Rede pré-existente no host, onde o postgres-shared já roda (a mesma do
+  # lawsuits-management-backend). Dentro dela use postgres-shared:5432.
+  shared-postgres-net:
+    external: true

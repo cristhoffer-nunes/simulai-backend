@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# secrets — RS256 keypair is generated locally/per-environment, never committed
+keys/
+
+# logs
+*.log
+npm-debug.log*
+
+# tests
+coverage/
+
+# editors
+.vscode/
+.idea/
+
+# os
+.DS_Store
+Thumbs.db
+
+# agent
+.claude
+CLAUDE.md

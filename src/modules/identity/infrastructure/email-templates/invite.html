@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Seu acesso ao Simulai</title>
+<style>
+  @media only screen and (max-width: 600px) {
+    .container { width: 100% !important; }
+    .px { padding-left: 24px !important; padding-right: 24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#fafafa;">
+<span style="display:none !important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all;">Crie sua senha para começar. O link vale por {{validFor}}.</span>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fafafa;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="width:600px; max-width:600px; background-color:#ffffff; border:1px solid #e5e5e5; border-radius:12px;">
+        <tr>
+          <td class="px" style="padding:32px 40px 0 40px; font-family:Arial,Helvetica,sans-serif; font-size:24px; line-height:28px; color:#161616; font-weight:bold; letter-spacing:-0.5px;">
+            simula<span style="color:#6d28d9;">i</span>
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:28px 40px 0 40px; font-family:Arial,Helvetica,sans-serif; font-size:22px; line-height:29px; color:#161616; font-weight:bold;">
+            Olá, {{userName}}. Seu acesso ao Simulai está pronto.
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:12px 40px 0 40px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:24px; color:#404040;">
+            Para entrar, crie sua senha pelo botão abaixo. O link vale por <strong style="color:#161616;">{{validFor}}</strong> e só pode ser usado uma vez.
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:28px 40px 0 40px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;">
+              <tr>
+                <td align="center" bgcolor="#161616" style="border-radius:8px;">
+                  <a href="{{accessUrl}}" style="display:block; padding:16px 24px; font-family:Arial,Helvetica,sans-serif; font-size:15px; line-height:20px; color:#ffffff; font-weight:bold; text-decoration:none; border-radius:8px;">Criar minha senha</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:16px 40px 0 40px; font-family:Arial,Helvetica,sans-serif; font-size:13px; line-height:20px; color:#5c5c5c;">
+            Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+            <a href="{{accessUrl}}" style="color:#161616; word-break:break-all;">{{accessUrl}}</a>
+          </td>
+        </tr>
+        <tr>
+          <td class="px" style="padding:32px 40px 32px 40px; font-family:Arial,Helvetica,sans-serif; font-size:12px; line-height:18px; color:#5c5c5c; border-top:1px solid #e5e5e5;">
+            Você recebeu este e-mail porque há uma conta no Simulai para {{userEmail}}. Se não reconhece este pedido, ignore a mensagem: nada muda na sua conta.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
