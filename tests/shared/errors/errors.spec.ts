@@ -83,4 +83,31 @@ describe('ProblemDetailsFilter', () => {
     expect(JSON.stringify(body)).not.toContain('leaked');
     run('a string');
   });
+
+  it('answers Fastify client errors (e.g. empty JSON body) with their 4xx status', () => {
+    const empty = Object.assign(
+      new Error("Body cannot be empty when content-type is set to 'application/json'"),
+      {
+        code: 'FST_ERR_CTP_EMPTY_JSON_BODY',
+        statusCode: 400,
+      },
+    );
+    expect(run(empty).body).toEqual({
+      type: '/problems/http-error',
+      title: 'BAD_REQUEST',
+      status: 400,
+      detail: "Body cannot be empty when content-type is set to 'application/json'",
+      instance: '/v1/x#req-1',
+    });
+    const tooLarge = { code: 'FST_ERR_CTP_BODY_TOO_LARGE', statusCode: 413 };
+    expect(run(tooLarge).body).toEqual(
+      expect.objectContaining({ status: 413, detail: 'Bad request.' }),
+    );
+    const odd = { code: 'FST_X', statusCode: 499 };
+    expect(run(odd).body.title).toBe('Error');
+    // Not Fastify, or not a client error: still a hidden 500.
+    expect(run({ code: 'OTHER', statusCode: 400 }).body.status).toBe(500);
+    expect(run({ code: 'FST_ERR_X', statusCode: 503 }).body.status).toBe(500);
+    expect(run({ code: 'FST_ERR_X' }).body.status).toBe(500);
+  });
 });

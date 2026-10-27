@@ -83,6 +83,19 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       };
     }
 
+    // Errors raised by Fastify itself before the route runs (malformed or empty JSON body,
+    // payload too large...) carry a 4xx statusCode: they are the client's fault, not ours.
+    const clientError = this.fastifyClientError(exception);
+    if (clientError) {
+      return {
+        type: '/problems/http-error',
+        title: HttpStatus[clientError.statusCode] ?? 'Error',
+        status: clientError.statusCode,
+        detail: clientError.message,
+        instance: `${instance}#${correlationId}`,
+      };
+    }
+
     return {
       type: '/problems/internal-error',
       title: 'Internal Server Error',
@@ -90,6 +103,18 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       detail: 'An unexpected error occurred.',
       instance: `${instance}#${correlationId}`,
     };
+  }
+
+  private fastifyClientError(exception: unknown): { statusCode: number; message: string } | null {
+    if (typeof exception !== 'object' || exception === null) return null;
+    const { statusCode, code, message } = exception as {
+      statusCode?: unknown;
+      code?: unknown;
+      message?: unknown;
+    };
+    if (typeof code !== 'string' || !code.startsWith('FST_')) return null;
+    if (typeof statusCode !== 'number' || statusCode < 400 || statusCode >= 500) return null;
+    return { statusCode, message: typeof message === 'string' ? message : 'Bad request.' };
   }
 
   private isHttpExceptionBody(body: unknown): body is HttpExceptionBody {
