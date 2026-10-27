@@ -8,8 +8,8 @@
 #
 # Variaveis que voce precisa preencher no Portainer:
 #   SIMULAI_DOMAIN           simulai.cristhoffersantos.com.br (sem https://; o mesmo da regra do Traefik abaixo)
-#   BACKEND_IMAGE_TAG        ex: 0.11.0
-#   FRONTEND_IMAGE_TAG       ex: 0.8.0
+#   BACKEND_IMAGE_TAG        ex: 0.11.1
+#   FRONTEND_IMAGE_TAG       ex: 0.8.1
 #   DATABASE_URL             postgresql://simulai_backend_prd:<senha>@postgres-shared:5432/prd?schema=simulai_service
 #                            (o "?schema=simulai_service" e obrigatorio; o backend recusa subir sem ele)
 #   JWT_PRIVATE_KEY          private.pem em base64, uma linha so: base64 -w0 keys/private.pem
@@ -71,6 +71,9 @@ services:
       BACKEND_INTERNAL_URL: http://simulai-backend:3002/simulai-backend/v1
       # Igual ao REFRESH_TOKEN_TTL_SECONDS do backend (14 dias).
       SESSION_MAX_AGE_SECONDS: "1209600"
+      # O frontend esta em duas redes: sem isto o Next escuta so no IP de uma delas (Docker poe o
+      # id do container em HOSTNAME) e o Traefik responde 502. A imagem 0.8.1+ ja traz este valor.
+      HOSTNAME: "0.0.0.0"
     networks:
       - traefik-net
       - simulai-internal
