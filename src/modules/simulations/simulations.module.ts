@@ -25,6 +25,17 @@ import {
   GetAttemptResultUseCase,
 } from './application/use-cases/get-attempt-result.use-case';
 import { PrismaAttemptStatsQuery } from './infrastructure/prisma-attempt-stats.query';
+import { PERFORMANCE_QUERY } from './application/ports/performance-query.port';
+import {
+  GET_DASHBOARD_USE_CASE,
+  GetDashboardUseCase,
+} from './application/use-cases/get-dashboard.use-case';
+import {
+  LIST_ATTEMPTS_USE_CASE,
+  ListAttemptsUseCase,
+} from './application/use-cases/list-attempts.use-case';
+import { PrismaPerformanceQuery } from './infrastructure/prisma-performance.query';
+import { HistoryController } from './presentation/controllers/history.controller';
 import { PrismaAttemptRepository } from './infrastructure/prisma-attempt.repository';
 import { AttemptsController } from './presentation/controllers/attempts.controller';
 import {
@@ -55,7 +66,7 @@ import { SimulationsController } from './presentation/controllers/simulations.co
 /** Exams: simulation definitions with frozen snapshots (Sprints 4–5). */
 @Module({
   imports: [IdentityModule],
-  controllers: [SimulationsController, AttemptsController],
+  controllers: [SimulationsController, AttemptsController, HistoryController],
   providers: [
     { provide: QUESTION_POOL, useClass: PrismaQuestionPoolAdapter },
     { provide: SIMULATION_REPOSITORY, useClass: PrismaSimulationRepository },
@@ -71,6 +82,9 @@ import { SimulationsController } from './presentation/controllers/simulations.co
     { provide: FINISH_ATTEMPT_USE_CASE, useClass: FinishAttemptUseCase },
     { provide: ATTEMPT_STATS_QUERY, useClass: PrismaAttemptStatsQuery },
     { provide: GET_ATTEMPT_RESULT_USE_CASE, useClass: GetAttemptResultUseCase },
+    { provide: PERFORMANCE_QUERY, useClass: PrismaPerformanceQuery },
+    { provide: LIST_ATTEMPTS_USE_CASE, useClass: ListAttemptsUseCase },
+    { provide: GET_DASHBOARD_USE_CASE, useClass: GetDashboardUseCase },
     AttemptExpiryService,
   ],
 })

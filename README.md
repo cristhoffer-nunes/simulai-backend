@@ -152,6 +152,9 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | PUT | `/attempts/:id/answers/:questionId` | `study.access` | `{ selectedOptionId: "A".."F" \| null }` — idempotente; `null` limpa a marcação. Depois do prazo → 409 `ATTEMPT_FINISHED` |
 | POST | `/attempts/:id/finish` | `study.access` | Encerra e calcula a nota (acertos ÷ total × 100, em branco contam no total). Idempotente: repetir devolve o mesmo resultado |
 | GET | `/attempts/:id/result` | `study.access` | Resultado: nota, comparação com a tentativa anterior, tempo usado, desempenho por disciplina (nesta prova e no geral) e cada questão com a marcada, o gabarito e o comentário. **Só depois de finalizada**: enquanto a prova está em andamento → 409 `ATTEMPT_IN_PROGRESS` |
+| GET | `/attempts` | `study.access` | Histórico de tentativas do aluno, da mais nova para a mais antiga: título, nº da tentativa, situação, respondidas, certas e nota. Filtros `status` (`completed`, `expired`, `in_progress` ou `finished`) e `simulationId`; paginação `cursor` + `limit` |
+| GET | `/simulations/:id/attempts` | `study.access` | O mesmo histórico, só de um simulado (simulado de outra pessoa → 404) |
+| GET | `/dashboard/overview` | `study.access` | Painel inicial: questões ativas no banco, simulados, provas finalizadas (e por tempo esgotado), acerto geral, acerto por disciplina e assunto, provas em andamento, últimas provas e a série de notas para o gráfico. Tudo calculado a partir das tentativas |
 
 Provas vencidas também são encerradas em segundo plano a cada 30 s. As respostas de prova usam `Cache-Control: no-store`.
 

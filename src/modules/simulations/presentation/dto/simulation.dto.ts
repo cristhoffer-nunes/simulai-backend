@@ -92,3 +92,25 @@ export class UpdateSimulationDto {
   @IsIn(['ready', 'archived'])
   status!: 'ready' | 'archived';
 }
+
+export class ListAttemptsQueryDto {
+  @IsOptional()
+  @IsIn(['completed', 'expired', 'in_progress', 'finished'])
+  status?: 'completed' | 'expired' | 'in_progress' | 'finished';
+
+  @IsOptional()
+  @IsUUID()
+  simulationId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  cursor?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}
