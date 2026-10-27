@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
 import { IMPORT_SCHEMA } from './application/ports/import-schema.port';
 import {
+  COMMIT_IMPORT_USE_CASE,
+  CommitImportUseCase,
+} from './application/use-cases/commit-import.use-case';
+import { GET_IMPORT_USE_CASE, GetImportUseCase } from './application/use-cases/get-import.use-case';
+import {
   DISCARD_IMPORT_USE_CASE,
   DiscardImportUseCase,
 } from './application/use-cases/discard-import.use-case';
@@ -109,6 +114,8 @@ import { TaxonomyController } from './presentation/controllers/taxonomy.controll
     { provide: QUESTION_IMPORT_REPOSITORY, useClass: PrismaQuestionImportRepository },
     { provide: VALIDATE_IMPORT_USE_CASE, useClass: ValidateImportUseCase },
     { provide: DISCARD_IMPORT_USE_CASE, useClass: DiscardImportUseCase },
+    { provide: COMMIT_IMPORT_USE_CASE, useClass: CommitImportUseCase },
+    { provide: GET_IMPORT_USE_CASE, useClass: GetImportUseCase },
     {
       provide: REMOVE_QUESTION_FROM_COLLECTION_USE_CASE,
       useClass: RemoveQuestionFromCollectionUseCase,
