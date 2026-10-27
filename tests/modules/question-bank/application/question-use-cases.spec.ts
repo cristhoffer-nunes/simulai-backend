@@ -4,7 +4,14 @@ import { CreateQuestionUseCase } from '@/modules/question-bank/application/use-c
 import { GetQuestionUseCase } from '@/modules/question-bank/application/use-cases/get-question.use-case';
 import { ListQuestionsUseCase } from '@/modules/question-bank/application/use-cases/list-questions.use-case';
 import { UpdateQuestionUseCase } from '@/modules/question-bank/application/use-cases/update-question.use-case';
-import { buildQuestion, detail, fakeQuestions, fakeTaxonomy, optionsInput } from '../helpers';
+import {
+  buildQuestion,
+  detail,
+  fakeCollections,
+  fakeQuestions,
+  fakeTaxonomy,
+  optionsInput,
+} from '../helpers';
 
 const newQuestion = {
   userId: 'u1',
@@ -36,7 +43,11 @@ describe('cursor', () => {
 describe('CreateQuestionUseCase', () => {
   it('creates a question owned by the student', async () => {
     const questions = fakeQuestions();
-    const result = await new CreateQuestionUseCase(questions, fakeTaxonomy()).execute(newQuestion);
+    const result = await new CreateQuestionUseCase(
+      questions,
+      fakeTaxonomy(),
+      fakeCollections(),
+    ).execute(newQuestion);
 
     expect(result.isSuccess).toBe(true);
     const created = questions.create.mock.calls[0]![0];
@@ -47,7 +58,11 @@ describe('CreateQuestionUseCase', () => {
 
   it('collects content and classification errors together', async () => {
     const questions = fakeQuestions();
-    const result = await new CreateQuestionUseCase(questions, fakeTaxonomy()).execute({
+    const result = await new CreateQuestionUseCase(
+      questions,
+      fakeTaxonomy(),
+      fakeCollections(),
+    ).execute({
       ...newQuestion,
       subjectId: 'someone-elses',
       statement: '',
@@ -61,7 +76,11 @@ describe('CreateQuestionUseCase', () => {
   });
 
   it('rejects a topic from another subject', async () => {
-    const result = await new CreateQuestionUseCase(fakeQuestions(), fakeTaxonomy()).execute({
+    const result = await new CreateQuestionUseCase(
+      fakeQuestions(),
+      fakeTaxonomy(),
+      fakeCollections(),
+    ).execute({
       ...newQuestion,
       subjectId: 's2',
       topicId: 't1',
@@ -71,9 +90,21 @@ describe('CreateQuestionUseCase', () => {
     ]);
   });
 
+  it("puts the new question in the student's collections and rejects foreign ones", async () => {
+    const questions = fakeQuestions();
+    const useCase = new CreateQuestionUseCase(questions, fakeTaxonomy(), fakeCollections());
+    await useCase.execute({ ...newQuestion, collectionIds: ['c1', 'c1', 'c2'] });
+    expect(questions.create.mock.calls[0]![1]).toEqual(['c1', 'c2']);
+
+    const result = await useCase.execute({ ...newQuestion, collectionIds: ['c1', 'x-other'] });
+    expect(result.error.details).toEqual([
+      expect.objectContaining({ path: 'collectionIds', code: 'UNKNOWN_COLLECTION' }),
+    ]);
+  });
+
   it('accepts a question without topic', async () => {
     const questions = fakeQuestions();
-    await new CreateQuestionUseCase(questions, fakeTaxonomy()).execute({
+    await new CreateQuestionUseCase(questions, fakeTaxonomy(), fakeCollections()).execute({
       ...newQuestion,
       topicId: undefined,
     });
@@ -151,7 +182,11 @@ describe('ListQuestionsUseCase', () => {
 describe('UpdateQuestionUseCase', () => {
   function build(question = buildQuestion()) {
     const questions = fakeQuestions({ findOwned: jest.fn().mockResolvedValue(question) });
-    return { question, questions, useCase: new UpdateQuestionUseCase(questions, fakeTaxonomy()) };
+    return {
+      question,
+      questions,
+      useCase: new UpdateQuestionUseCase(questions, fakeTaxonomy(), fakeCollections()),
+    };
   }
 
   it('merges partial content with the current one', async () => {
@@ -159,7 +194,7 @@ describe('UpdateQuestionUseCase', () => {
     await useCase.execute({ userId: 'u1', questionId: 'q1', statement: 'Nova pergunta?' });
     expect(question.content.statement).toBe('Nova pergunta?');
     expect(question.content.options).toHaveLength(2);
-    expect(questions.save).toHaveBeenCalledWith(question);
+    expect(questions.save).toHaveBeenCalledWith(question, undefined);
   });
 
   it('replaces options and difficulty', async () => {
@@ -188,6 +223,16 @@ describe('UpdateQuestionUseCase', () => {
     expect(question.topicId).toBeNull();
   });
 
+  it('sets the exact collections when asked, and keeps them otherwise', async () => {
+    const { questions, useCase } = build();
+    await useCase.execute({ userId: 'u1', questionId: 'q1', collectionIds: ['c3'] });
+    expect(questions.save).toHaveBeenLastCalledWith(expect.anything(), ['c3']);
+    await useCase.execute({ userId: 'u1', questionId: 'q1', statement: 'Outra?' });
+    expect(questions.save).toHaveBeenLastCalledWith(expect.anything(), undefined);
+    const bad = await useCase.execute({ userId: 'u1', questionId: 'q1', collectionIds: ['nope'] });
+    expect(bad.error.kind).toBe('VALIDATION_ERROR');
+  });
+
   it('archives and restores', async () => {
     const { question, useCase } = build();
     await useCase.execute({ userId: 'u1', questionId: 'q1', status: 'archived' });
@@ -213,7 +258,11 @@ describe('UpdateQuestionUseCase', () => {
 
   it("404 for questions that are not the student's", async () => {
     const questions = fakeQuestions();
-    const result = await new UpdateQuestionUseCase(questions, fakeTaxonomy()).execute({
+    const result = await new UpdateQuestionUseCase(
+      questions,
+      fakeTaxonomy(),
+      fakeCollections(),
+    ).execute({
       userId: 'u1',
       questionId: 'x',
     });

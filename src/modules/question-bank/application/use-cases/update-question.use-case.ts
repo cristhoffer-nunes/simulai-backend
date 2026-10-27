@@ -16,7 +16,12 @@ import {
   ITaxonomyRepository,
   TAXONOMY_REPOSITORY,
 } from '../../domain/taxonomy/taxonomy.repository';
+import {
+  COLLECTION_REPOSITORY,
+  ICollectionRepository,
+} from '../../domain/collections/collection.repository';
 import { resolveClassification } from '../classification';
+import { checkCollectionIds } from '../collection-input';
 
 export interface UpdateQuestionInput {
   userId: string;
@@ -29,6 +34,8 @@ export interface UpdateQuestionInput {
   /** null removes the topic; undefined keeps it (if it still belongs to the subject). */
   topicId?: string | null;
   status?: QuestionStatus;
+  /** Exact set of the student's collections this question should be in; undefined keeps them. */
+  collectionIds?: string[];
 }
 
 export interface IUpdateQuestionUseCase {
@@ -43,6 +50,7 @@ export class UpdateQuestionUseCase implements IUpdateQuestionUseCase {
   constructor(
     @Inject(QUESTION_REPOSITORY) private readonly questions: IQuestionRepository,
     @Inject(TAXONOMY_REPOSITORY) private readonly taxonomy: ITaxonomyRepository,
+    @Inject(COLLECTION_REPOSITORY) private readonly collections: ICollectionRepository,
   ) {}
 
   async execute(input: UpdateQuestionInput): Promise<Result<QuestionDetail, AppError>> {
@@ -89,6 +97,13 @@ export class UpdateQuestionUseCase implements IUpdateQuestionUseCase {
       else question.reclassify(classification.value);
     }
 
+    const collectionIds = await checkCollectionIds(
+      this.collections,
+      input.userId,
+      input.collectionIds,
+    );
+    if (collectionIds.isFailure) errors.push(...collectionIds.error);
+
     if (errors.length > 0) {
       return Result.fail(AppError.validation('The question has invalid fields.', errors));
     }
@@ -96,7 +111,7 @@ export class UpdateQuestionUseCase implements IUpdateQuestionUseCase {
     if (input.status === 'archived') question.archive();
     if (input.status === 'active') question.restore();
 
-    await this.questions.save(question);
+    await this.questions.save(question, collectionIds.value);
     const detail = await this.questions.detail(input.userId, question.id);
     return Result.ok(detail!);
   }

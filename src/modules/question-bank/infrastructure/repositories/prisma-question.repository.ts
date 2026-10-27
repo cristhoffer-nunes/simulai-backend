@@ -115,7 +115,16 @@ export class PrismaQuestionRepository implements IQuestionRepository {
     };
   }
 
-  async create(question: Question): Promise<void> {
+  async ownedIds(ownerUserId: string, questionIds: string[]): Promise<string[]> {
+    if (questionIds.length === 0) return [];
+    const rows = await this.prisma.question.findMany({
+      where: { ownerUserId, id: { in: questionIds } },
+      select: { id: true },
+    });
+    return rows.map((found) => found.id);
+  }
+
+  async create(question: Question, collectionIds: string[] = []): Promise<void> {
     await this.prisma.question.create({
       data: {
         id: question.id,
@@ -132,11 +141,12 @@ export class PrismaQuestionRepository implements IQuestionRepository {
         createdAt: question.createdAt,
         updatedAt: question.updatedAt,
         options: { create: this.optionRows(question) },
+        collections: { create: collectionIds.map((collectionId) => ({ collectionId })) },
       },
     });
   }
 
-  async save(question: Question): Promise<void> {
+  async save(question: Question, collectionIds?: string[]): Promise<void> {
     // Delete-then-insert inside one transaction keeps the "one correct option" index satisfied.
     await this.prisma.$transaction(async (tx) => {
       await tx.question.update({
@@ -156,6 +166,15 @@ export class PrismaQuestionRepository implements IQuestionRepository {
       await tx.questionOption.createMany({
         data: this.optionRows(question).map((option) => ({ ...option, questionId: question.id })),
       });
+      if (collectionIds) {
+        await tx.collectionQuestion.deleteMany({
+          where: { questionId: question.id, collectionId: { notIn: collectionIds } },
+        });
+        await tx.collectionQuestion.createMany({
+          data: collectionIds.map((collectionId) => ({ collectionId, questionId: question.id })),
+          skipDuplicates: true,
+        });
+      }
     });
   }
 

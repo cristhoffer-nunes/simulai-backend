@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsIn,
@@ -51,6 +52,13 @@ export class CreateQuestionDto {
   @ValidateNested({ each: true })
   @Type(() => QuestionOptionDto)
   options!: QuestionOptionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  collectionIds?: string[];
 }
 
 export class UpdateQuestionDto {
@@ -87,6 +95,13 @@ export class UpdateQuestionDto {
   @IsOptional()
   @IsIn(['active', 'archived'])
   status?: 'active' | 'archived';
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  collectionIds?: string[];
 }
 
 export class ListQuestionsQueryDto {

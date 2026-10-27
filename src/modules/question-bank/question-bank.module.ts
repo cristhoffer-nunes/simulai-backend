@@ -1,4 +1,35 @@
 import { Module } from '@nestjs/common';
+import {
+  ADD_QUESTIONS_TO_COLLECTION_USE_CASE,
+  AddQuestionsToCollectionUseCase,
+} from './application/use-cases/add-questions-to-collection.use-case';
+import {
+  CREATE_COLLECTION_USE_CASE,
+  CreateCollectionUseCase,
+} from './application/use-cases/create-collection.use-case';
+import {
+  DELETE_COLLECTION_USE_CASE,
+  DeleteCollectionUseCase,
+} from './application/use-cases/delete-collection.use-case';
+import {
+  GET_COLLECTION_USE_CASE,
+  GetCollectionUseCase,
+} from './application/use-cases/get-collection.use-case';
+import {
+  LIST_COLLECTIONS_USE_CASE,
+  ListCollectionsUseCase,
+} from './application/use-cases/list-collections.use-case';
+import {
+  REMOVE_QUESTION_FROM_COLLECTION_USE_CASE,
+  RemoveQuestionFromCollectionUseCase,
+} from './application/use-cases/remove-question-from-collection.use-case';
+import {
+  UPDATE_COLLECTION_USE_CASE,
+  UpdateCollectionUseCase,
+} from './application/use-cases/update-collection.use-case';
+import { COLLECTION_REPOSITORY } from './domain/collections/collection.repository';
+import { PrismaCollectionRepository } from './infrastructure/repositories/prisma-collection.repository';
+import { CollectionsController } from './presentation/controllers/collections.controller';
 import { IdentityModule } from '../identity/identity.module';
 import {
   CREATE_SUBJECT_USE_CASE,
@@ -42,7 +73,7 @@ import { TaxonomyController } from './presentation/controllers/taxonomy.controll
 /** Student's private question bank: taxonomy, questions and collections (Sprint 2). */
 @Module({
   imports: [IdentityModule],
-  controllers: [TaxonomyController, QuestionsController],
+  controllers: [TaxonomyController, QuestionsController, CollectionsController],
   providers: [
     { provide: TAXONOMY_REPOSITORY, useClass: PrismaTaxonomyRepository },
     { provide: GET_TAXONOMY_USE_CASE, useClass: GetTaxonomyUseCase },
@@ -54,6 +85,17 @@ import { TaxonomyController } from './presentation/controllers/taxonomy.controll
     { provide: CREATE_QUESTION_USE_CASE, useClass: CreateQuestionUseCase },
     { provide: UPDATE_QUESTION_USE_CASE, useClass: UpdateQuestionUseCase },
     { provide: ARCHIVE_QUESTION_USE_CASE, useClass: ArchiveQuestionUseCase },
+    { provide: COLLECTION_REPOSITORY, useClass: PrismaCollectionRepository },
+    { provide: LIST_COLLECTIONS_USE_CASE, useClass: ListCollectionsUseCase },
+    { provide: GET_COLLECTION_USE_CASE, useClass: GetCollectionUseCase },
+    { provide: CREATE_COLLECTION_USE_CASE, useClass: CreateCollectionUseCase },
+    { provide: UPDATE_COLLECTION_USE_CASE, useClass: UpdateCollectionUseCase },
+    { provide: DELETE_COLLECTION_USE_CASE, useClass: DeleteCollectionUseCase },
+    { provide: ADD_QUESTIONS_TO_COLLECTION_USE_CASE, useClass: AddQuestionsToCollectionUseCase },
+    {
+      provide: REMOVE_QUESTION_FROM_COLLECTION_USE_CASE,
+      useClass: RemoveQuestionFromCollectionUseCase,
+    },
   ],
 })
 export class QuestionBankModule {}

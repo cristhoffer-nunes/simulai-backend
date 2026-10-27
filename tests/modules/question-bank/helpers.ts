@@ -94,8 +94,38 @@ export function fakeQuestions(overrides: Partial<jest.Mocked<IQuestionRepository
     findOwned: jest.fn().mockResolvedValue(null),
     detail: jest.fn(async (_u: string, id: string) => detail({ id })),
     list: jest.fn().mockResolvedValue({ items: [], total: 0, hasMore: false }),
+    ownedIds: jest.fn(async (_u: string, ids: string[]) => ids),
     create: jest.fn(),
     save: jest.fn(),
     ...overrides,
   } as jest.Mocked<IQuestionRepository>;
+}
+
+export function fakeCollections(
+  overrides: Partial<
+    jest.Mocked<
+      import('@/modules/question-bank/domain/collections/collection.repository').ICollectionRepository
+    >
+  > = {},
+) {
+  return {
+    listByOwner: jest.fn().mockResolvedValue([]),
+    summary: jest.fn(async (_u: string, id: string) => ({
+      id,
+      name: 'Coleção',
+      description: null,
+      questionCount: 0,
+      createdAt: new Date('2026-10-01T00:00:00Z'),
+    })),
+    findOwned: jest.fn().mockResolvedValue(null),
+    ownedIds: jest.fn(async (_u: string, ids: string[]) => ids.filter((id) => id.startsWith('c'))),
+    create: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+    addQuestions: jest.fn(async (_c: string, ids: string[]) => ids.length),
+    removeQuestion: jest.fn(),
+    ...overrides,
+  } as jest.Mocked<
+    import('@/modules/question-bank/domain/collections/collection.repository').ICollectionRepository
+  >;
 }

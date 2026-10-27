@@ -48,10 +48,18 @@ export interface IQuestionRepository {
   findOwned(ownerUserId: string, questionId: string): Promise<Question | null>;
   detail(ownerUserId: string, questionId: string): Promise<QuestionDetail | null>;
   list(filter: QuestionListFilter): Promise<QuestionPage>;
-  /** Question + options, atomically. */
-  create(question: Question): Promise<void>;
-  /** Updates fields and replaces the options, atomically. */
-  save(question: Question): Promise<void>;
+  /** Which of these ids are questions of this student. */
+  ownedIds(ownerUserId: string, questionIds: string[]): Promise<string[]>;
+  /**
+   * Question + options (+ memberships in the given collections, already checked as the
+   * owner's), atomically.
+   */
+  create(question: Question, collectionIds?: string[]): Promise<void>;
+  /**
+   * Updates fields and replaces the options, atomically. When collectionIds is given, the
+   * question ends up in exactly those collections of the owner.
+   */
+  save(question: Question, collectionIds?: string[]): Promise<void>;
 }
 
 export const QUESTION_REPOSITORY = Symbol('QUESTION_REPOSITORY');

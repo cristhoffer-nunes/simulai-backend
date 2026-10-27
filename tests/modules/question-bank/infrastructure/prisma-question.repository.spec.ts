@@ -30,6 +30,7 @@ function build() {
   const tx = {
     question: { update: jest.fn() },
     questionOption: { deleteMany: jest.fn(), createMany: jest.fn() },
+    collectionQuestion: { deleteMany: jest.fn(), createMany: jest.fn() },
   };
   const prisma = {
     question: { findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn(), create: jest.fn() },
@@ -137,5 +138,34 @@ describe('PrismaQuestionRepository', () => {
       isCorrect: true,
       questionId: 'q1',
     });
+    expect(tx.collectionQuestion.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('syncs collection memberships on create and save', async () => {
+    const { prisma, tx, repo } = build();
+    const question = buildQuestion();
+    await repo.create(question, ['c1']);
+    expect(prisma.question.create.mock.calls[0][0].data.collections).toEqual({
+      create: [{ collectionId: 'c1' }],
+    });
+
+    await repo.save(question, ['c1', 'c2']);
+    expect(tx.collectionQuestion.deleteMany).toHaveBeenCalledWith({
+      where: { questionId: 'q1', collectionId: { notIn: ['c1', 'c2'] } },
+    });
+    expect(tx.collectionQuestion.createMany).toHaveBeenCalledWith({
+      data: [
+        { collectionId: 'c1', questionId: 'q1' },
+        { collectionId: 'c2', questionId: 'q1' },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it('filters owned question ids', async () => {
+    const { prisma, repo } = build();
+    await expect(repo.ownedIds('u1', [])).resolves.toEqual([]);
+    prisma.question.findMany.mockResolvedValue([{ id: 'q1' }]);
+    await expect(repo.ownedIds('u1', ['q1', 'q9'])).resolves.toEqual(['q1']);
   });
 });

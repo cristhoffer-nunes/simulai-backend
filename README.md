@@ -133,8 +133,12 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | GET | `/questions` | `study.access` | Banco do aluno. Filtros `status` (padrão `active`), `subjectId`, `topicId`, `difficulty`, `q` (enunciado), `collectionId`; paginação `cursor` + `limit` (até 100). Responde `{ items, nextCursor, total }` |
 | POST | `/questions` | `study.access` | Cria questão: 2 a 6 alternativas, exatamente uma correta, enunciado e explicação obrigatórios. Erros por campo em `errors` (ex.: `options[2].text` / `DUPLICATE_OPTION`) |
 | GET | `/questions/:id` | `study.access` | Detalhe com gabarito (editor). Questão de outra pessoa responde 404 |
-| PATCH | `/questions/:id` | `study.access` | Atualização parcial; `options` substitui todas; `status` arquiva ou reativa |
+| PATCH | `/questions/:id` | `study.access` | Atualização parcial; `options` substitui todas; `status` arquiva ou reativa; `collectionIds` define em quais coleções a questão fica |
 | DELETE | `/questions/:id` | `study.access` | Arquiva (remoção lógica). Provas já feitas não mudam |
+| GET / POST | `/collections` | `study.access` | Lista (com contagem) / cria coleção. Nome repetido do mesmo aluno → 409 |
+| GET / PATCH / DELETE | `/collections/:id` | `study.access` | Detalhe, renomear/descrever, apagar. Apagar a coleção **não** apaga as questões |
+| POST | `/collections/:id/questions` | `study.access` | Adiciona várias `{ questionIds }`; ignora as que já estão. Responde `{ added }` |
+| PUT / DELETE | `/collections/:id/questions/:questionId` | `study.access` | Adiciona / tira uma questão (204) |
 
 Erros seguem RFC 9457 (`application/problem+json`), com `title` igual ao código do erro
 (`INVALID_CREDENTIALS`, `USER_NOT_FOUND`...), o mesmo formato do lawsuits.
