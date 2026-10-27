@@ -18,6 +18,15 @@ RUN npx tsc -p tsconfig.seed.json
 FROM node:24-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# Set by the release workflow (package.json version + commit); empty locally, where the health
+# check falls back to package.json.
+ARG APP_VERSION=
+ARG GIT_SHA=
+ENV APP_VERSION=${APP_VERSION}
+LABEL org.opencontainers.image.title="simulai-backend" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="https://github.com/cristhoffer-nunes/simulai-backend"
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 

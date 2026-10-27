@@ -1,6 +1,7 @@
 import { Controller, Get, VERSION_NEUTRAL } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { ApiTags } from '@nestjs/swagger';
+import { appVersion } from '../shared/app-version';
 import { PrismaHealthIndicator } from './indicators/prisma.health-indicator';
 
 @ApiTags('Health')
@@ -13,7 +14,8 @@ export class HealthController {
 
   @Get()
   @HealthCheck()
-  check() {
-    return this.health.check([() => this.prismaHealth.check('postgres')]);
+  async check() {
+    const result = await this.health.check([() => this.prismaHealth.check('postgres')]);
+    return { ...result, version: appVersion() };
   }
 }
