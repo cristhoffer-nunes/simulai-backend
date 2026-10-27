@@ -1,4 +1,17 @@
 import { Module } from '@nestjs/common';
+import { IMPORT_SCHEMA } from './application/ports/import-schema.port';
+import {
+  DISCARD_IMPORT_USE_CASE,
+  DiscardImportUseCase,
+} from './application/use-cases/discard-import.use-case';
+import {
+  VALIDATE_IMPORT_USE_CASE,
+  ValidateImportUseCase,
+} from './application/use-cases/validate-import.use-case';
+import { QUESTION_IMPORT_REPOSITORY } from './domain/imports/question-import.repository';
+import { AjvImportSchemaAdapter } from './infrastructure/import-schema/ajv-import-schema.adapter';
+import { PrismaQuestionImportRepository } from './infrastructure/repositories/prisma-question-import.repository';
+import { ImportsController } from './presentation/controllers/imports.controller';
 import {
   ADD_QUESTIONS_TO_COLLECTION_USE_CASE,
   AddQuestionsToCollectionUseCase,
@@ -73,7 +86,7 @@ import { TaxonomyController } from './presentation/controllers/taxonomy.controll
 /** Student's private question bank: taxonomy, questions and collections (Sprint 2). */
 @Module({
   imports: [IdentityModule],
-  controllers: [TaxonomyController, QuestionsController, CollectionsController],
+  controllers: [TaxonomyController, QuestionsController, CollectionsController, ImportsController],
   providers: [
     { provide: TAXONOMY_REPOSITORY, useClass: PrismaTaxonomyRepository },
     { provide: GET_TAXONOMY_USE_CASE, useClass: GetTaxonomyUseCase },
@@ -92,6 +105,10 @@ import { TaxonomyController } from './presentation/controllers/taxonomy.controll
     { provide: UPDATE_COLLECTION_USE_CASE, useClass: UpdateCollectionUseCase },
     { provide: DELETE_COLLECTION_USE_CASE, useClass: DeleteCollectionUseCase },
     { provide: ADD_QUESTIONS_TO_COLLECTION_USE_CASE, useClass: AddQuestionsToCollectionUseCase },
+    { provide: IMPORT_SCHEMA, useClass: AjvImportSchemaAdapter },
+    { provide: QUESTION_IMPORT_REPOSITORY, useClass: PrismaQuestionImportRepository },
+    { provide: VALIDATE_IMPORT_USE_CASE, useClass: ValidateImportUseCase },
+    { provide: DISCARD_IMPORT_USE_CASE, useClass: DiscardImportUseCase },
     {
       provide: REMOVE_QUESTION_FROM_COLLECTION_USE_CASE,
       useClass: RemoveQuestionFromCollectionUseCase,

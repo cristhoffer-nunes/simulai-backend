@@ -123,7 +123,10 @@ describe('Question', () => {
   });
 
   it('changes content, classification and status', () => {
-    const question = Question.create('u1', { subjectId: 's1', topicId: null }, content(), 'imp-1');
+    const question = Question.create('u1', { subjectId: 's1', topicId: null }, content(), {
+      sourceImportId: 'imp-1',
+      sourceReference: ' Netter, p. 3 ',
+    });
     const before = question.contentHash;
     question.changeContent(content({ statement: 'Outra pergunta?' }));
     expect(question.contentHash).not.toBe(before);
@@ -136,5 +139,9 @@ describe('Question', () => {
     question.restore();
     expect(question.status).toBe('active');
     expect(question.sourceImportId).toBe('imp-1');
+    expect(question.sourceReference).toBe(' Netter, p. 3 ');
+    question.changeSourceReference('  ');
+    question.changeSourceReference(null);
+    expect(question.sourceReference).toBeNull();
   });
 });

@@ -22,6 +22,7 @@ import {
 } from '../../domain/collections/collection.repository';
 import { resolveClassification } from '../classification';
 import { checkCollectionIds } from '../collection-input';
+import { sourceReferenceErrors } from '../source-reference';
 
 export interface UpdateQuestionInput {
   userId: string;
@@ -36,6 +37,8 @@ export interface UpdateQuestionInput {
   status?: QuestionStatus;
   /** Exact set of the student's collections this question should be in; undefined keeps them. */
   collectionIds?: string[];
+  /** null or empty clears it; undefined keeps it. */
+  sourceReference?: string | null;
 }
 
 export interface IUpdateQuestionUseCase {
@@ -103,6 +106,11 @@ export class UpdateQuestionUseCase implements IUpdateQuestionUseCase {
       input.collectionIds,
     );
     if (collectionIds.isFailure) errors.push(...collectionIds.error);
+    const referenceErrors = sourceReferenceErrors(input.sourceReference);
+    errors.push(...referenceErrors);
+    if (referenceErrors.length === 0 && input.sourceReference !== undefined) {
+      question.changeSourceReference(input.sourceReference);
+    }
 
     if (errors.length > 0) {
       return Result.fail(AppError.validation('The question has invalid fields.', errors));

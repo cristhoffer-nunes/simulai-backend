@@ -59,6 +59,12 @@ export class CreateQuestionDto {
   @ArrayUnique()
   @IsUUID('all', { each: true })
   collectionIds?: string[];
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(600)
+  sourceReference?: string | null;
 }
 
 export class UpdateQuestionDto {
@@ -102,6 +108,12 @@ export class UpdateQuestionDto {
   @ArrayUnique()
   @IsUUID('all', { each: true })
   collectionIds?: string[];
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(600)
+  sourceReference?: string | null;
 }
 
 export class ListQuestionsQueryDto {

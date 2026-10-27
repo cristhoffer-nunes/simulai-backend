@@ -21,12 +21,14 @@ import {
 } from '../../domain/collections/collection.repository';
 import { resolveClassification } from '../classification';
 import { checkCollectionIds } from '../collection-input';
+import { sourceReferenceErrors } from '../source-reference';
 
 export interface CreateQuestionInput extends QuestionContentInput {
   userId: string;
   subjectId: string;
   topicId?: string | null;
   collectionIds?: string[];
+  sourceReference?: string | null;
 }
 
 export interface ICreateQuestionUseCase {
@@ -61,12 +63,15 @@ export class CreateQuestionUseCase implements ICreateQuestionUseCase {
       ...(content.isFailure ? content.error : []),
       ...(classification.isFailure ? classification.error : []),
       ...(collectionIds.isFailure ? collectionIds.error : []),
+      ...sourceReferenceErrors(input.sourceReference),
     ];
     if (errors.length > 0) {
       return Result.fail(AppError.validation('The question has invalid fields.', errors));
     }
 
-    const question = Question.create(input.userId, classification.value, content.value);
+    const question = Question.create(input.userId, classification.value, content.value, {
+      sourceReference: input.sourceReference?.trim() || null,
+    });
     await this.questions.create(question, collectionIds.value);
 
     const detail = await this.questions.detail(input.userId, question.id);

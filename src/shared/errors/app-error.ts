@@ -13,7 +13,9 @@ export type ErrorKind =
   | 'USER_NOT_FOUND'
   | 'CANNOT_MODIFY_SELF'
   | 'NOT_FOUND'
-  | 'CONFLICT';
+  | 'CONFLICT'
+  | 'IMPORT_PREVIEW_EXPIRED'
+  | 'UNSUPPORTED_SCHEMA';
 
 export class AppError {
   constructor(
@@ -82,6 +84,23 @@ export class ResourceErrors {
   static conflict(message: string, details?: unknown): AppError {
     return new AppError('CONFLICT', message, details);
   }
+
+  static importPreviewExpired(): AppError {
+    return new AppError(
+      'IMPORT_PREVIEW_EXPIRED',
+      'This import preview expired or was discarded. Validate the JSON again.',
+    );
+  }
+
+  static unsupportedSchema(version: unknown): AppError {
+    return new AppError('UNSUPPORTED_SCHEMA', 'Only schemaVersion "1.0" is supported.', [
+      {
+        path: 'schemaVersion',
+        code: 'UNSUPPORTED_SCHEMA',
+        message: `Got ${JSON.stringify(version)}.`,
+      },
+    ]);
+  }
 }
 
 export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
@@ -98,4 +117,6 @@ export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   CANNOT_MODIFY_SELF: HttpStatus.CONFLICT,
   NOT_FOUND: HttpStatus.NOT_FOUND,
   CONFLICT: HttpStatus.CONFLICT,
+  IMPORT_PREVIEW_EXPIRED: HttpStatus.GONE,
+  UNSUPPORTED_SCHEMA: HttpStatus.UNPROCESSABLE_ENTITY,
 };

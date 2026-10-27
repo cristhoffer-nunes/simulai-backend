@@ -20,6 +20,9 @@ export interface QuestionListItem {
 
 export interface QuestionDetail extends QuestionListItem {
   explanation: string;
+  sourceReference: string | null;
+  /** Set when the question came from an import. */
+  sourceImportId: string | null;
   options: QuestionOption[];
   collectionIds: string[];
 }
@@ -48,6 +51,8 @@ export interface IQuestionRepository {
   findOwned(ownerUserId: string, questionId: string): Promise<Question | null>;
   detail(ownerUserId: string, questionId: string): Promise<QuestionDetail | null>;
   list(filter: QuestionListFilter): Promise<QuestionPage>;
+  /** Which of these content hashes already exist in the student's bank (active or archived). */
+  existingHashes(ownerUserId: string, hashes: string[]): Promise<Set<string>>;
   /** Which of these ids are questions of this student. */
   ownedIds(ownerUserId: string, questionIds: string[]): Promise<string[]>;
   /**

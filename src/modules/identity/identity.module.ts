@@ -103,6 +103,6 @@ import { PermissionsGuard } from './presentation/guards/permissions.guard';
     JwtAuthGuard,
     PermissionsGuard,
   ],
-  exports: [TOKEN_SERVICE, JwtAuthGuard, PermissionsGuard],
+  exports: [TOKEN_SERVICE, RATE_LIMITER, JwtAuthGuard, PermissionsGuard],
 })
 export class IdentityModule {}

@@ -14,6 +14,7 @@ const row = {
   status: 'active',
   contentHash: 'h',
   sourceImportId: null,
+  sourceReference: 'Netter',
   createdAt: at,
   updatedAt: at,
   subject: { id: 's1', name: 'Anatomia' },
@@ -159,6 +160,17 @@ describe('PrismaQuestionRepository', () => {
         { collectionId: 'c2', questionId: 'q1' },
       ],
       skipDuplicates: true,
+    });
+  });
+
+  it('finds which content hashes are already in the bank', async () => {
+    const { prisma, repo } = build();
+    await expect(repo.existingHashes('u1', [])).resolves.toEqual(new Set());
+    prisma.question.findMany.mockResolvedValue([{ contentHash: 'h1' }]);
+    await expect(repo.existingHashes('u1', ['h1', 'h2', 'h1'])).resolves.toEqual(new Set(['h1']));
+    expect(prisma.question.findMany.mock.calls[0][0].where).toEqual({
+      ownerUserId: 'u1',
+      contentHash: { in: ['h1', 'h2'] },
     });
   });
 

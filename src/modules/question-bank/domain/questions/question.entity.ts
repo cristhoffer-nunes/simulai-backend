@@ -15,6 +15,8 @@ export interface QuestionProps extends QuestionClassification {
   status: QuestionStatus;
   contentHash: string;
   sourceImportId: string | null;
+  /** Free text such as "Netter, cap. 3, p. 120". Never verified by the platform. */
+  sourceReference: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,7 +29,7 @@ export class Question {
     ownerUserId: string,
     classification: QuestionClassification,
     content: QuestionContent,
-    sourceImportId: string | null = null,
+    origin: { sourceImportId?: string | null; sourceReference?: string | null } = {},
   ): Question {
     const now = new Date();
     return new Question({
@@ -37,7 +39,8 @@ export class Question {
       content,
       status: 'active',
       contentHash: contentHashOf(content),
-      sourceImportId,
+      sourceImportId: origin.sourceImportId ?? null,
+      sourceReference: origin.sourceReference ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -71,6 +74,9 @@ export class Question {
   get sourceImportId(): string | null {
     return this.props.sourceImportId;
   }
+  get sourceReference(): string | null {
+    return this.props.sourceReference;
+  }
   get createdAt(): Date {
     return this.props.createdAt;
   }
@@ -82,6 +88,14 @@ export class Question {
   changeContent(content: QuestionContent): void {
     this.props.content = content;
     this.props.contentHash = contentHashOf(content);
+    this.touch();
+  }
+
+  /** Empty text clears it. At most 500 characters (checked by the caller). */
+  changeSourceReference(sourceReference: string | null): void {
+    const value = sourceReference?.trim() || null;
+    if (value === this.props.sourceReference) return;
+    this.props.sourceReference = value;
     this.touch();
   }
 

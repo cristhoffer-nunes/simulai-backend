@@ -188,19 +188,21 @@ model Topic {
 // ─── Banco de questões ──────────────────────────────────────────────────────────────────────────
 
 model Question {
-  id             String   @id @default(uuid()) @db.Uuid
-  ownerUserId    String   @map("owner_user_id") @db.Uuid
-  subjectId      String   @map("subject_id") @db.Uuid
-  topicId        String?  @map("topic_id") @db.Uuid
-  type           String   @default("multiple_choice")
-  statement      String
-  difficulty     String
-  explanation    String
-  status         String   @default("active")
-  contentHash    String   @map("content_hash")
-  sourceImportId String?  @map("source_import_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id              String   @id @default(uuid()) @db.Uuid
+  ownerUserId     String   @map("owner_user_id") @db.Uuid
+  subjectId       String   @map("subject_id") @db.Uuid
+  topicId         String?  @map("topic_id") @db.Uuid
+  type            String   @default("multiple_choice")
+  statement       String
+  difficulty      String
+  explanation     String
+  status          String   @default("active")
+  contentHash     String   @map("content_hash")
+  sourceImportId  String?  @map("source_import_id") @db.Uuid
+  /// Where the content came from (chapter/page), as typed or as given by the AI. Not verified.
+  sourceReference String?  @map("source_reference") @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   owner               User                 @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   subject             Subject              @relation(fields: [subjectId], references: [id])
@@ -269,6 +271,10 @@ model QuestionImport {
   rejectedCount  Int       @default(0) @map("rejected_count")
   duplicateCount Int       @default(0) @map("duplicate_count")
   idempotencyKey String?   @map("idempotency_key")
+  /// Validated, normalized items kept server-side until commit (cannot be tampered with).
+  preview        Json?
+  /// The preview stops being committable after this moment (status stays "validated").
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   committedAt    DateTime? @map("committed_at") @db.Timestamptz
 
@@ -276,6 +282,7 @@ model QuestionImport {
   questions Question[]
 
   @@unique([ownerUserId, idempotencyKey])
+  @@index([ownerUserId, createdAt(sort: Desc)])
   @@map("question_imports")
   @@schema("simulai_service")
 }

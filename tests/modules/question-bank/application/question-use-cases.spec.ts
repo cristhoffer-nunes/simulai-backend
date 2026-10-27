@@ -102,6 +102,17 @@ describe('CreateQuestionUseCase', () => {
     ]);
   });
 
+  it('keeps a source reference and limits its size', async () => {
+    const questions = fakeQuestions();
+    const useCase = new CreateQuestionUseCase(questions, fakeTaxonomy(), fakeCollections());
+    await useCase.execute({ ...newQuestion, sourceReference: ' Netter, cap. 3 ' });
+    expect(questions.create.mock.calls[0]![0].sourceReference).toBe('Netter, cap. 3');
+    const tooLong = await useCase.execute({ ...newQuestion, sourceReference: 'x'.repeat(501) });
+    expect(tooLong.error.details).toEqual([
+      expect.objectContaining({ path: 'sourceReference', code: 'TOO_LONG' }),
+    ]);
+  });
+
   it('accepts a question without topic', async () => {
     const questions = fakeQuestions();
     await new CreateQuestionUseCase(questions, fakeTaxonomy(), fakeCollections()).execute({
@@ -230,6 +241,20 @@ describe('UpdateQuestionUseCase', () => {
     await useCase.execute({ userId: 'u1', questionId: 'q1', statement: 'Outra?' });
     expect(questions.save).toHaveBeenLastCalledWith(expect.anything(), undefined);
     const bad = await useCase.execute({ userId: 'u1', questionId: 'q1', collectionIds: ['nope'] });
+    expect(bad.error.kind).toBe('VALIDATION_ERROR');
+  });
+
+  it('changes or clears the source reference', async () => {
+    const { question, useCase } = build();
+    await useCase.execute({ userId: 'u1', questionId: 'q1', sourceReference: 'Guyton, p. 10' });
+    expect(question.sourceReference).toBe('Guyton, p. 10');
+    await useCase.execute({ userId: 'u1', questionId: 'q1', sourceReference: null });
+    expect(question.sourceReference).toBeNull();
+    const bad = await useCase.execute({
+      userId: 'u1',
+      questionId: 'q1',
+      sourceReference: 'x'.repeat(501),
+    });
     expect(bad.error.kind).toBe('VALIDATION_ERROR');
   });
 

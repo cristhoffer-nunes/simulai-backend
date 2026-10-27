@@ -54,6 +54,7 @@ export class PrismaQuestionRepository implements IQuestionRepository {
       status: row.status as QuestionStatus,
       contentHash: row.contentHash,
       sourceImportId: row.sourceImportId,
+      sourceReference: row.sourceReference,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -68,6 +69,8 @@ export class PrismaQuestionRepository implements IQuestionRepository {
     return {
       ...this.toListItem(row),
       explanation: row.explanation,
+      sourceReference: row.sourceReference,
+      sourceImportId: row.sourceImportId,
       options: row.options.map((option) => ({
         key: option.optionKey,
         text: option.text,
@@ -115,6 +118,15 @@ export class PrismaQuestionRepository implements IQuestionRepository {
     };
   }
 
+  async existingHashes(ownerUserId: string, hashes: string[]): Promise<Set<string>> {
+    if (hashes.length === 0) return new Set();
+    const rows = await this.prisma.question.findMany({
+      where: { ownerUserId, contentHash: { in: [...new Set(hashes)] } },
+      select: { contentHash: true },
+    });
+    return new Set(rows.map((found) => found.contentHash));
+  }
+
   async ownedIds(ownerUserId: string, questionIds: string[]): Promise<string[]> {
     if (questionIds.length === 0) return [];
     const rows = await this.prisma.question.findMany({
@@ -138,6 +150,7 @@ export class PrismaQuestionRepository implements IQuestionRepository {
         status: question.status,
         contentHash: question.contentHash,
         sourceImportId: question.sourceImportId,
+        sourceReference: question.sourceReference,
         createdAt: question.createdAt,
         updatedAt: question.updatedAt,
         options: { create: this.optionRows(question) },
@@ -159,6 +172,7 @@ export class PrismaQuestionRepository implements IQuestionRepository {
           difficulty: question.content.difficulty,
           status: question.status,
           contentHash: question.contentHash,
+          sourceReference: question.sourceReference,
           updatedAt: question.updatedAt,
         },
       });
