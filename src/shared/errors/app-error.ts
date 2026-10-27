@@ -19,6 +19,7 @@ export type ErrorKind =
   | 'INSUFFICIENT_QUESTIONS'
   | 'ATTEMPT_ALREADY_ACTIVE'
   | 'ATTEMPT_FINISHED'
+  | 'ATTEMPT_IN_PROGRESS'
   | 'SIMULATION_ARCHIVED';
 
 export class AppError {
@@ -132,6 +133,14 @@ export class ExamErrors {
     return new AppError('ATTEMPT_FINISHED', 'This attempt is already finished.', { status });
   }
 
+  /** RES-01: the answer key only exists after the attempt is finished. */
+  static attemptInProgress(): AppError {
+    return new AppError(
+      'ATTEMPT_IN_PROGRESS',
+      'The result is available only after the attempt is finished.',
+    );
+  }
+
   static simulationArchived(): AppError {
     return new AppError('SIMULATION_ARCHIVED', 'Archived simulations do not accept new attempts.');
   }
@@ -156,5 +165,6 @@ export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   INSUFFICIENT_QUESTIONS: HttpStatus.UNPROCESSABLE_ENTITY,
   ATTEMPT_ALREADY_ACTIVE: HttpStatus.CONFLICT,
   ATTEMPT_FINISHED: HttpStatus.CONFLICT,
+  ATTEMPT_IN_PROGRESS: HttpStatus.CONFLICT,
   SIMULATION_ARCHIVED: HttpStatus.CONFLICT,
 };

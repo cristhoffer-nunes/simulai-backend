@@ -142,6 +142,7 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | POST | `/imports/validate` | `study.access` | Recebe o JSON da IA (`schemaVersion` "1.0", até 100 questões, 1 MB) e devolve `{ previewId, expiresAt, validItems, invalidItems }` com erros por índice e campo, duplicatas exatas (`duplicateOf`: `bank`/`batch`) e disciplinas/assuntos novos. Nada entra no banco. Versão desconhecida → 422. Limite: 30 validações a cada 10 min |
 | POST | `/imports` | `study.access` | Confirma `{ previewId, selectedIndexes, collectionId?, idempotencyKey }` numa transação: cria disciplinas/assuntos que faltam, as questões (com `sourceImportId`) e, se pedido, as coloca na coleção. Repetir a mesma `idempotencyKey` devolve o mesmo resultado sem duplicar. Prévia vencida ou descartada → 410 |
 | GET | `/imports/:id` | `study.access` | Resumo `{ importedCount, skippedDuplicateCount, rejectedCount, … }` |
+| DELETE | `/imports/:id` | `study.access` | Descarta a prévia |
 | GET | `/simulations/availability` | `study.access` | Questões elegíveis (ativas) por disciplina, com filtros `difficulty` e `collectionId` |
 | POST | `/simulations` | `study.access` | `{ title?, mode: "exam", questionCount, subjectIds, difficulty, distribution: "balanced", timed, durationSeconds?, collectionId? }`. Sorteia N questões distintas com distribuição equilibrada (20 em 2 disciplinas → 10/10; a sobra vai para a primeira escolhida) e congela cópias delas. Falta de questões → 422 `INSUFFICIENT_QUESTIONS` com `{ subjectId, required, available }` |
 | GET | `/simulations` | `study.access` | Lista (padrão: `status=ready`) com nº de tentativas, tentativa em andamento e última nota; paginação por `cursor` |
@@ -150,9 +151,9 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | GET | `/attempts/:id` | `study.access` | Questões (enunciado e alternativas, **sem gabarito nem explicação**), marcações salvas e tempo restante. Prova vencida é encerrada como tempo esgotado ao ser aberta |
 | PUT | `/attempts/:id/answers/:questionId` | `study.access` | `{ selectedOptionId: "A".."F" \| null }` — idempotente; `null` limpa a marcação. Depois do prazo → 409 `ATTEMPT_FINISHED` |
 | POST | `/attempts/:id/finish` | `study.access` | Encerra e calcula a nota (acertos ÷ total × 100, em branco contam no total). Idempotente: repetir devolve o mesmo resultado |
+| GET | `/attempts/:id/result` | `study.access` | Resultado: nota, comparação com a tentativa anterior, tempo usado, desempenho por disciplina (nesta prova e no geral) e cada questão com a marcada, o gabarito e o comentário. **Só depois de finalizada**: enquanto a prova está em andamento → 409 `ATTEMPT_IN_PROGRESS` |
 
 Provas vencidas também são encerradas em segundo plano a cada 30 s. As respostas de prova usam `Cache-Control: no-store`.
-| DELETE | `/imports/:id` | `study.access` | Descarta a prévia |
 
 Erros seguem RFC 9457 (`application/problem+json`), com `title` igual ao código do erro
 (`INVALID_CREDENTIALS`, `USER_NOT_FOUND`...), o mesmo formato do lawsuits.

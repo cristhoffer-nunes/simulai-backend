@@ -13,10 +13,11 @@ const fail = () => ({
 describe('AttemptsController', () => {
   it('delegates with the authenticated student', async () => {
     expect(Reflect.getMetadata(PERMISSIONS_KEY, AttemptsController)).toEqual(['study.access']);
-    const [start, get, save, finish] = [
+    const [start, get, save, finish, result] = [
       ok({ id: 'a' }),
       ok({ id: 'a' }),
       ok({ questionId: 'q' }),
+      ok({ attemptId: 'a' }),
       ok({ attemptId: 'a' }),
     ];
     const controller = new AttemptsController(
@@ -24,6 +25,7 @@ describe('AttemptsController', () => {
       get as never,
       save as never,
       finish as never,
+      result as never,
     );
     await controller.start(user, 'sim');
     expect(start.execute).toHaveBeenCalledWith('u1', 'sim');
@@ -37,10 +39,13 @@ describe('AttemptsController', () => {
     });
     await controller.finish(user, 'a');
     expect(finish.execute).toHaveBeenCalledWith('u1', 'a');
+    await controller.result(user, 'a');
+    expect(result.execute).toHaveBeenCalledWith('u1', 'a');
   });
 
   it('maps failures', async () => {
     const controller = new AttemptsController(
+      fail() as never,
       fail() as never,
       fail() as never,
       fail() as never,
@@ -52,5 +57,6 @@ describe('AttemptsController', () => {
       controller.answer(user, 'a', 'q', { selectedOptionId: 'A' }),
     ).rejects.toBeInstanceOf(DomainException);
     await expect(controller.finish(user, 'a')).rejects.toBeInstanceOf(DomainException);
+    await expect(controller.result(user, 'a')).rejects.toBeInstanceOf(DomainException);
   });
 });

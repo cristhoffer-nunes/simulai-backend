@@ -21,6 +21,10 @@ import {
   IFinishAttemptUseCase,
 } from '../../application/use-cases/finish-attempt.use-case';
 import {
+  GET_ATTEMPT_RESULT_USE_CASE,
+  IGetAttemptResultUseCase,
+} from '../../application/use-cases/get-attempt-result.use-case';
+import {
   GET_ATTEMPT_USE_CASE,
   IGetAttemptUseCase,
 } from '../../application/use-cases/get-attempt.use-case';
@@ -44,6 +48,7 @@ export class AttemptsController {
     @Inject(GET_ATTEMPT_USE_CASE) private readonly getAttempt: IGetAttemptUseCase,
     @Inject(SAVE_ANSWER_USE_CASE) private readonly saveAnswer: ISaveAnswerUseCase,
     @Inject(FINISH_ATTEMPT_USE_CASE) private readonly finishAttempt: IFinishAttemptUseCase,
+    @Inject(GET_ATTEMPT_RESULT_USE_CASE) private readonly getResult: IGetAttemptResultUseCase,
   ) {}
 
   @Post('simulations/:id/attempts')
@@ -95,6 +100,18 @@ export class AttemptsController {
     @Param('id', new ParseUUIDPipe()) attemptId: string,
   ) {
     const result = await this.finishAttempt.execute(user.sub, attemptId);
+    if (result.isFailure) throw new DomainException(result.error);
+    return result.value;
+  }
+
+  /** Answer key and explanations: 409 ATTEMPT_IN_PROGRESS until the attempt is finished. */
+  @Get('attempts/:id/result')
+  @Header('Cache-Control', 'no-store')
+  async result(
+    @CurrentUser() user: AccessTokenClaims,
+    @Param('id', new ParseUUIDPipe()) attemptId: string,
+  ) {
+    const result = await this.getResult.execute(user.sub, attemptId);
     if (result.isFailure) throw new DomainException(result.error);
     return result.value;
   }

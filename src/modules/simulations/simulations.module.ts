@@ -19,6 +19,12 @@ import {
   StartAttemptUseCase,
 } from './application/use-cases/start-attempt.use-case';
 import { ATTEMPT_REPOSITORY } from './domain/attempt.repository';
+import { ATTEMPT_STATS_QUERY } from './application/ports/attempt-stats.port';
+import {
+  GET_ATTEMPT_RESULT_USE_CASE,
+  GetAttemptResultUseCase,
+} from './application/use-cases/get-attempt-result.use-case';
+import { PrismaAttemptStatsQuery } from './infrastructure/prisma-attempt-stats.query';
 import { PrismaAttemptRepository } from './infrastructure/prisma-attempt.repository';
 import { AttemptsController } from './presentation/controllers/attempts.controller';
 import {
@@ -63,6 +69,8 @@ import { SimulationsController } from './presentation/controllers/simulations.co
     { provide: GET_ATTEMPT_USE_CASE, useClass: GetAttemptUseCase },
     { provide: SAVE_ANSWER_USE_CASE, useClass: SaveAnswerUseCase },
     { provide: FINISH_ATTEMPT_USE_CASE, useClass: FinishAttemptUseCase },
+    { provide: ATTEMPT_STATS_QUERY, useClass: PrismaAttemptStatsQuery },
+    { provide: GET_ATTEMPT_RESULT_USE_CASE, useClass: GetAttemptResultUseCase },
     AttemptExpiryService,
   ],
 })
