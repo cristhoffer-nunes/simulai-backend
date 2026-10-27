@@ -1,0 +1,62 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { AppError } from '../../../../shared/errors/app-error';
+import { Result } from '../../../../shared/result/result';
+import {
+  QuestionContentInput,
+  validateQuestionContent,
+} from '../../domain/questions/question-content';
+import { Question } from '../../domain/questions/question.entity';
+import {
+  IQuestionRepository,
+  QUESTION_REPOSITORY,
+  QuestionDetail,
+} from '../../domain/questions/question.repository';
+import {
+  ITaxonomyRepository,
+  TAXONOMY_REPOSITORY,
+} from '../../domain/taxonomy/taxonomy.repository';
+import { resolveClassification } from '../classification';
+
+export interface CreateQuestionInput extends QuestionContentInput {
+  userId: string;
+  subjectId: string;
+  topicId?: string | null;
+}
+
+export interface ICreateQuestionUseCase {
+  execute(input: CreateQuestionInput): Promise<Result<QuestionDetail, AppError>>;
+}
+
+export const CREATE_QUESTION_USE_CASE = Symbol('CREATE_QUESTION_USE_CASE');
+
+@Injectable()
+export class CreateQuestionUseCase implements ICreateQuestionUseCase {
+  constructor(
+    @Inject(QUESTION_REPOSITORY) private readonly questions: IQuestionRepository,
+    @Inject(TAXONOMY_REPOSITORY) private readonly taxonomy: ITaxonomyRepository,
+  ) {}
+
+  async execute(input: CreateQuestionInput): Promise<Result<QuestionDetail, AppError>> {
+    const content = validateQuestionContent(input);
+    const classification = await resolveClassification(
+      this.taxonomy,
+      input.userId,
+      input.subjectId,
+      input.topicId ?? null,
+    );
+
+    const errors = [
+      ...(content.isFailure ? content.error : []),
+      ...(classification.isFailure ? classification.error : []),
+    ];
+    if (errors.length > 0) {
+      return Result.fail(AppError.validation('The question has invalid fields.', errors));
+    }
+
+    const question = Question.create(input.userId, classification.value, content.value);
+    await this.questions.create(question);
+
+    const detail = await this.questions.detail(input.userId, question.id);
+    return Result.ok(detail!);
+  }
+}

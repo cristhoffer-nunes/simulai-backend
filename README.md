@@ -130,6 +130,11 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | GET | `/taxonomy` | `study.access` | Áreas → disciplinas → assuntos (catálogo + os do aluno), com contagem de questões ativas |
 | POST | `/subjects` | `study.access` | Cria disciplina privada; se já existir uma com o mesmo nome (sem diferenciar maiúsculas e acentos), devolve a existente com 200 |
 | POST | `/subjects/:id/topics` | `study.access` | Cria assunto privado, com a mesma regra de reaproveitamento |
+| GET | `/questions` | `study.access` | Banco do aluno. Filtros `status` (padrão `active`), `subjectId`, `topicId`, `difficulty`, `q` (enunciado), `collectionId`; paginação `cursor` + `limit` (até 100). Responde `{ items, nextCursor, total }` |
+| POST | `/questions` | `study.access` | Cria questão: 2 a 6 alternativas, exatamente uma correta, enunciado e explicação obrigatórios. Erros por campo em `errors` (ex.: `options[2].text` / `DUPLICATE_OPTION`) |
+| GET | `/questions/:id` | `study.access` | Detalhe com gabarito (editor). Questão de outra pessoa responde 404 |
+| PATCH | `/questions/:id` | `study.access` | Atualização parcial; `options` substitui todas; `status` arquiva ou reativa |
+| DELETE | `/questions/:id` | `study.access` | Arquiva (remoção lógica). Provas já feitas não mudam |
 
 Erros seguem RFC 9457 (`application/problem+json`), com `title` igual ao código do erro
 (`INVALID_CREDENTIALS`, `USER_NOT_FOUND`...), o mesmo formato do lawsuits.
