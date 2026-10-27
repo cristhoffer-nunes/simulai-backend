@@ -80,3 +80,43 @@ export function buildSimulation(
     ...overrides,
   });
 }
+
+import { Attempt } from '@/modules/simulations/domain/attempt.entity';
+import { IAttemptRepository } from '@/modules/simulations/domain/attempt.repository';
+
+/** In-memory attempts store with the same contract as the Prisma one (lock = sequential). */
+export function memoryAttempts(initial: Attempt[] = []) {
+  const rows = new Map(initial.map((attempt) => [attempt.id, attempt]));
+  const repo = {
+    create: jest.fn(async (attempt: Attempt) => {
+      const clash = [...rows.values()].some(
+        (other) => other.simulationId === attempt.simulationId && other.isActive,
+      );
+      if (clash) return false;
+      rows.set(attempt.id, attempt);
+      return true;
+    }),
+    findOwned: jest.fn(async (owner: string, id: string) => {
+      const found = rows.get(id);
+      return found && found.ownerUserId === owner ? found : null;
+    }),
+    findActive: jest.fn(
+      async (owner: string, simulationId: string) =>
+        [...rows.values()].find(
+          (a) => a.ownerUserId === owner && a.simulationId === simulationId && a.isActive,
+        ) ?? null,
+    ),
+    withLock: jest.fn(async <T>(owner: string, id: string, work: (attempt: Attempt) => T) => {
+      const found = rows.get(id);
+      if (!found || found.ownerUserId !== owner) return null;
+      return { attempt: found, value: work(found) };
+    }),
+    attemptNumber: jest.fn().mockResolvedValue(1),
+    findOverdue: jest.fn(async (now: Date) =>
+      [...rows.values()]
+        .filter((a) => a.isActive && a.isPastDeadline(now))
+        .map((a) => ({ id: a.id, ownerUserId: a.ownerUserId, simulationId: a.simulationId })),
+    ),
+  };
+  return { rows, repo: repo as unknown as jest.Mocked<IAttemptRepository> };
+}
