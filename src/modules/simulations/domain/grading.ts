@@ -7,6 +7,8 @@ export type Verdict = 'correct' | 'incorrect' | 'blank';
 export interface GradedQuestion {
   id: string;
   position: number;
+  /** The bank question it was copied from (null if it was deleted since). */
+  sourceQuestionId: string | null;
   statement: string;
   options: { id: string; text: string }[];
   subjectId: string;
@@ -55,6 +57,7 @@ export function gradeQuestions(
       return {
         id: question.id,
         position: question.position,
+        sourceQuestionId: question.sourceQuestionId,
         statement: snapshot.statement,
         options: snapshot.options.map((option) => ({ id: option.id, text: option.text })),
         subjectId: snapshot.subjectId,

@@ -36,7 +36,7 @@ export interface NewSimulation {
   durationSeconds: number | null;
   configuration: SimulationConfiguration;
   /** Already in exam order. */
-  picked: { sourceQuestionId: string; snapshot: QuestionSnapshot }[];
+  picked: { sourceQuestionId: string | null; snapshot: QuestionSnapshot }[];
 }
 
 /** Aggregate root: an exam definition with its immutable question snapshots (RN-014, RN-018). */

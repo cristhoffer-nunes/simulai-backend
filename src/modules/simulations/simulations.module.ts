@@ -36,6 +36,10 @@ import {
 } from './application/use-cases/list-attempts.use-case';
 import { PrismaPerformanceQuery } from './infrastructure/prisma-performance.query';
 import { HistoryController } from './presentation/controllers/history.controller';
+import {
+  CREATE_REVIEW_SIMULATION_USE_CASE,
+  CreateReviewSimulationUseCase,
+} from './application/use-cases/create-review-simulation.use-case';
 import { PrismaAttemptRepository } from './infrastructure/prisma-attempt.repository';
 import { AttemptsController } from './presentation/controllers/attempts.controller';
 import {
@@ -85,6 +89,7 @@ import { SimulationsController } from './presentation/controllers/simulations.co
     { provide: PERFORMANCE_QUERY, useClass: PrismaPerformanceQuery },
     { provide: LIST_ATTEMPTS_USE_CASE, useClass: ListAttemptsUseCase },
     { provide: GET_DASHBOARD_USE_CASE, useClass: GetDashboardUseCase },
+    { provide: CREATE_REVIEW_SIMULATION_USE_CASE, useClass: CreateReviewSimulationUseCase },
     AttemptExpiryService,
   ],
 })

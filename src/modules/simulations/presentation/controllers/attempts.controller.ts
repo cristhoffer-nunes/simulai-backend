@@ -21,6 +21,10 @@ import {
   IFinishAttemptUseCase,
 } from '../../application/use-cases/finish-attempt.use-case';
 import {
+  CREATE_REVIEW_SIMULATION_USE_CASE,
+  ICreateReviewSimulationUseCase,
+} from '../../application/use-cases/create-review-simulation.use-case';
+import {
   GET_ATTEMPT_RESULT_USE_CASE,
   IGetAttemptResultUseCase,
 } from '../../application/use-cases/get-attempt-result.use-case';
@@ -49,6 +53,8 @@ export class AttemptsController {
     @Inject(SAVE_ANSWER_USE_CASE) private readonly saveAnswer: ISaveAnswerUseCase,
     @Inject(FINISH_ATTEMPT_USE_CASE) private readonly finishAttempt: IFinishAttemptUseCase,
     @Inject(GET_ATTEMPT_RESULT_USE_CASE) private readonly getResult: IGetAttemptResultUseCase,
+    @Inject(CREATE_REVIEW_SIMULATION_USE_CASE)
+    private readonly createReview: ICreateReviewSimulationUseCase,
   ) {}
 
   @Post('simulations/:id/attempts')
@@ -113,6 +119,18 @@ export class AttemptsController {
     @Param('id', new ParseUUIDPipe()) attemptId: string,
   ) {
     const result = await this.getResult.execute(user.sub, attemptId);
+    if (result.isFailure) throw new DomainException(result.error);
+    return result.value;
+  }
+
+  /** New simulation with the wrong and blank questions of a finished attempt (201). */
+  @Post('attempts/:id/review-simulation')
+  @HttpCode(HttpStatus.CREATED)
+  async review(
+    @CurrentUser() user: AccessTokenClaims,
+    @Param('id', new ParseUUIDPipe()) attemptId: string,
+  ) {
+    const result = await this.createReview.execute(user.sub, attemptId);
     if (result.isFailure) throw new DomainException(result.error);
     return result.value;
   }
