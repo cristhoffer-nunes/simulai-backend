@@ -7,7 +7,7 @@
 # 3. Deploy the stack.
 #
 # Variaveis que voce precisa preencher no Portainer:
-#   SIMULAI_DOMAIN           simulai.cristhoffersantos.com.br (sem https://)
+#   SIMULAI_DOMAIN           simulai.cristhoffersantos.com.br (sem https://; o mesmo da regra do Traefik abaixo)
 #   BACKEND_IMAGE_TAG        ex: 0.11.0
 #   FRONTEND_IMAGE_TAG       ex: 0.8.0
 #   DATABASE_URL             postgresql://simulai_backend_prd:<senha>@postgres-shared:5432/prd?schema=simulai_service
@@ -77,7 +77,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik-net"
-      - "traefik.http.routers.simulai.rule=Host(`${SIMULAI_DOMAIN}`)"
+      # Dominio escrito aqui de proposito, nao via ${SIMULAI_DOMAIN}: na substituicao o Portainer
+      # perde as crases e o Traefik recusa a regra ("... is not defined"). Se mudar o dominio,
+      # troque aqui e em SIMULAI_DOMAIN.
+      - "traefik.http.routers.simulai.rule=Host(`simulai.cristhoffersantos.com.br`)"
       - "traefik.http.routers.simulai.entrypoints=websecure"
       - "traefik.http.routers.simulai.tls=true"
       - "traefik.http.routers.simulai.tls.certresolver=le"
