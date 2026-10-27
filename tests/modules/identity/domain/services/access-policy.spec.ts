@@ -9,4 +9,12 @@ describe('access policy', () => {
     expect(ROLE_PERMISSIONS[Roles.STUDENT]).not.toContain(Permissions.USERS_MANAGE);
     expect(ROLE_PERMISSIONS[Roles.ADMIN]).toContain(Permissions.USERS_MANAGE);
   });
+
+  it('lets administrators use the whole system, study area included', () => {
+    expect(ROLE_PERMISSIONS[Roles.ADMIN]).toEqual([
+      Permissions.USERS_MANAGE,
+      Permissions.STUDY_ACCESS,
+    ]);
+    expect(ROLE_PERMISSIONS[Roles.STUDENT]).toEqual([Permissions.STUDY_ACCESS]);
+  });
 });

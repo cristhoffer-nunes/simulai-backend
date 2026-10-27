@@ -56,8 +56,13 @@ tests/                 Testes unitários (espelham src/)
 
 | Papel | Permissões | O que acessa |
 |---|---|---|
-| `admin` | `users.manage` | Área administrativa (`/v1/admin/*`) |
+| `admin` | `users.manage`, `study.access` | Todo o sistema: área administrativa (`/v1/admin/*`) e a própria área de estudo |
 | `student` | `study.access` | Área de estudo; **nunca** acessa rotas admin (403) |
+
+Na área de estudo cada conta, admin ou aluno, só enxerga os próprios dados: o admin não vê as
+questões, simulados nem resultados dos alunos. As permissões do papel são gravadas pelo seed, que
+roda a cada subida do container; quem já estava logado passa a ter o acesso novo ao renovar a
+sessão (até 15 min) ou ao entrar de novo.
 
 Contas não se cadastram sozinhas. O admin cria a conta, que nasce sem senha utilizável e com
 `mustChangePassword=true`. O aluno recebe um link de primeiro acesso por e-mail (válido por 72 h),

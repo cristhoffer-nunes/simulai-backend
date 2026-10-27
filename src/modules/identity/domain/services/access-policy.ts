@@ -1,7 +1,8 @@
 /**
  * Roles and permissions of Simulai. Roles are data (seeded in the database); these constants are
- * the vocabulary the code checks against. An account is either an administrator or a student:
- * students never receive any admin permission, so every /admin route is closed to them.
+ * the vocabulary the code checks against. Administrators use the whole system (their own study
+ * area plus account management); students never receive any admin permission, so every /admin
+ * route is closed to them.
  */
 export const Roles = {
   ADMIN: 'admin',
@@ -19,6 +20,6 @@ export const Permissions = {
 export type PermissionName = (typeof Permissions)[keyof typeof Permissions];
 
 export const ROLE_PERMISSIONS: Record<RoleName, PermissionName[]> = {
-  [Roles.ADMIN]: [Permissions.USERS_MANAGE],
+  [Roles.ADMIN]: [Permissions.USERS_MANAGE, Permissions.STUDY_ACCESS],
   [Roles.STUDENT]: [Permissions.STUDY_ACCESS],
 };

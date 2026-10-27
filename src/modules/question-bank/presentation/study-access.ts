@@ -5,7 +5,7 @@ import { RequirePermissions } from '../../identity/presentation/decorators/requi
 import { JwtAuthGuard } from '../../identity/presentation/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../identity/presentation/guards/permissions.guard';
 
-/** Student area: signed in + study.access. Administrators do not have it. */
+/** Study area: signed in + study.access (students and administrators; each sees only their own data). */
 export const StudyAccess = () =>
   applyDecorators(
     ApiBearerAuth(),
