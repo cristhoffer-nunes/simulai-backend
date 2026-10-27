@@ -138,8 +138,38 @@ Só o frontend o alcança.
    container aplica as migrations pendentes (`prisma migrate deploy`) e o seed. Se uma migration
    falhar, o container para e a API não sobe. `RUN_MIGRATIONS=false` / `RUN_SEED=false` desligam
    esses passos.
-5. **Atualizar:** gere as novas imagens, troque `BACKEND_IMAGE_TAG` / `FRONTEND_IMAGE_TAG` no stack
-   e clique em *Update the stack* com *Re-pull image*.
+5. **Atualizar:** automático pelo GitHub Actions (abaixo). À mão: gere as novas imagens, troque
+   `BACKEND_IMAGE_TAG` / `FRONTEND_IMAGE_TAG` no stack e clique em *Update the stack* com
+   *Re-pull image*.
+
+### Pipeline (GitHub Actions)
+
+Cada repositório (backend e frontend) tem os mesmos três workflows, em sequência, a cada push na
+`master`:
+
+1. **Segurança e testes** (`security.yml`, também em PRs): lint, tipos, testes com cobertura,
+   migrations e seed num Postgres limpo (só backend), `npm audit` de produção (bloqueia high e
+   critical), gitleaks no histórico, Semgrep (bloqueia severidade ERROR) e build da imagem com Trivy
+   (bloqueia high e critical com correção disponível).
+2. **Imagem** (`release.yml`): se tudo passou, gera a imagem com a tag da versão do `package.json`
+   (e `sha-<commit>`), passa o Trivy de novo e publica no registry. Uma versão já publicada nunca é
+   sobrescrita: se outro commit tiver a mesma versão, falha pedindo o bump.
+3. **Deploy** (`deploy.yml`): chama o webhook do stack no Portainer com as tags dos **dois**
+   serviços. A do outro serviço é a que está no ar (lida em `/api/health`) ou, se não der para
+   saber, a maior publicada. Depois espera até 6 minutos o `/api/health` mostrar as versões novas.
+   Para voltar uma versão: *Actions → Deploy → Run workflow* com as tags desejadas.
+
+Configuração no GitHub (*Settings → Secrets and variables → Actions*), nos dois repositórios:
+
+| Nome | Tipo | Valor |
+|---|---|---|
+| `REGISTRY_USERNAME` | secret | usuário do `registry.cristhoffersantos.com.br` |
+| `REGISTRY_PASSWORD` | secret | senha ou token do registry |
+| `PORTAINER_WEBHOOK_URL` | secret | URL do webhook do stack `simulai` |
+| `HEALTH_URL` | variable (opcional) | padrão `https://simulai.cristhoffersantos.com.br/api/health` |
+
+O webhook com variáveis na URL é recurso do Portainer Business Edition; deixe valores padrão para
+`BACKEND_IMAGE_TAG` e `FRONTEND_IMAGE_TAG` nas variáveis do stack.
 
 ## Endpoints
 

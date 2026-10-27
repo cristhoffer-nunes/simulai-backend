@@ -1,0 +1,122 @@
+# Step 2 of 3: once "Segurança e testes" passes on a push to master, builds the image tagged with
+# the package.json version (plus sha-<commit>), scans it again and pushes it to the registry.
+name: Imagem
+
+on:
+  workflow_run:
+    workflows: ["Segurança e testes"]
+    types: [completed]
+    branches: [master]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: registry.cristhoffersantos.com.br
+  IMAGE: simulai-backend
+
+jobs:
+  image:
+    name: Build e push
+    # Only pushes to this repository's master: a fork's pull request from a branch named "master"
+    # also matches the branch filter above.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Versão
+        id: meta
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version '$version' is not X.Y.Z"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+
+      # A published version is never overwritten. Re-running the same commit is a no-op; another
+      # commit with the same version means package.json was not bumped.
+      - name: Versão já publicada?
+        id: existing
+        env:
+          REF: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if ! crane digest "$REF" >/dev/null 2>&1; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          revision=$(crane config "$REF" | jq -r '.config.Labels["org.opencontainers.image.revision"] // ""')
+          if [ "$revision" != "$SHA" ]; then
+            echo "::error::$REF already exists (commit ${revision:-unknown}). Bump the version in package.json."
+            exit 1
+          fi
+          echo "::notice::$REF already published from this commit; skipping the build."
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.existing.outputs.exists == 'false'
+
+      - name: Build
+        if: steps.existing.outputs.exists == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE }}:sha-${{ steps.meta.outputs.short }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_SHA=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=${{ env.IMAGE }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE }}
+
+      - name: Trivy na imagem final
+        if: steps.existing.outputs.exists == 'false'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Push
+        if: steps.existing.outputs.exists == 'false'
+        env:
+          REPO: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          SHORT: ${{ steps.meta.outputs.short }}
+        run: |
+          docker push "$REPO:$VERSION"
+          docker push "$REPO:sha-$SHORT"
+
+      - name: Resumo
+        env:
+          REPO: ${{ env.REGISTRY }}/${{ env.IMAGE }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          echo "### Imagem" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$REPO:$VERSION\` ($(crane digest "$REPO:$VERSION"))" >> "$GITHUB_STEP_SUMMARY"

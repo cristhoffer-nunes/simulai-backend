@@ -1,0 +1,131 @@
+# Step 3 of 3: after "Imagem" publishes a version, calls the Portainer stack webhook with the image
+# tags of both services and waits for /api/health to report them. Run it by hand (Actions → Deploy →
+# Run workflow) to roll back to any published tag.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Imagem"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      backend_tag:
+        description: Tag do backend (vazio = versão do package.json da master)
+        required: false
+      frontend_tag:
+        description: Tag do frontend (vazio = a que está no ar)
+        required: false
+
+# Shared with nothing else in this repository: deploys run one at a time, in order.
+concurrency:
+  group: simulai-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: registry.cristhoffersantos.com.br
+  # This repository's service, and the other service of the stack.
+  SELF_IMAGE: simulai-backend
+  SELF_VAR: BACKEND_IMAGE_TAG
+  SELF_KEY: backend
+  OTHER_IMAGE: simulai-frontend
+  OTHER_VAR: FRONTEND_IMAGE_TAG
+  OTHER_KEY: frontend
+  HEALTH_URL: ${{ vars.HEALTH_URL || 'https://simulai.cristhoffersantos.com.br/api/health' }}
+
+jobs:
+  deploy:
+    name: Atualizar a stack no Portainer
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - uses: imjasonh/setup-crane@feee3b6bb0d4c68370f256a4502498c9227e5c6b # v0.7
+
+      # Both tags go in every call, so a deploy of one service never moves the other: it keeps the
+      # version running now (read from /api/health), or the highest published one if that is unknown.
+      - name: Tags
+        id: tags
+        env:
+          INPUT_SELF: ${{ inputs.backend_tag }}
+          INPUT_OTHER: ${{ inputs.frontend_tag }}
+        run: |
+          semver='^[0-9]+\.[0-9]+\.[0-9]+$'
+          self="${INPUT_SELF:-$(node -p "require('./package.json').version")}"
+          other="$INPUT_OTHER"
+          if [ -z "$other" ]; then
+            other=$(curl -fsS --max-time 10 "$HEALTH_URL" 2>/dev/null | jq -r --arg key "$OTHER_KEY" '.[$key].version // ""' || true)
+            [[ "$other" =~ $semver ]] && echo "::notice::$OTHER_IMAGE: keeping the running version $other"
+          fi
+          if ! [[ "$other" =~ $semver ]]; then
+            other=$(crane ls "$REGISTRY/$OTHER_IMAGE" | grep -E "$semver" | sort -V | tail -1)
+            echo "::notice::$OTHER_IMAGE: running version unknown, using the latest published ($other)"
+          fi
+          for pair in "$SELF_IMAGE:$self" "$OTHER_IMAGE:$other"; do
+            tag="${pair#*:}"
+            if ! [[ "$tag" =~ $semver ]]; then echo "::error::Invalid tag '$tag' for ${pair%%:*}"; exit 1; fi
+            if ! crane digest "$REGISTRY/$pair" >/dev/null; then echo "::error::$REGISTRY/$pair is not in the registry"; exit 1; fi
+          done
+          echo "self=$self" >> "$GITHUB_OUTPUT"
+          echo "other=$other" >> "$GITHUB_OUTPUT"
+
+      - name: Webhook do Portainer
+        env:
+          WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+          SELF_TAG: ${{ steps.tags.outputs.self }}
+          OTHER_TAG: ${{ steps.tags.outputs.other }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "::error::Secret PORTAINER_WEBHOOK_URL is not set"; exit 1; fi
+          separator='?'; [[ "$WEBHOOK" == *\?* ]] && separator='&'
+          status=$(curl -sS -o /tmp/webhook.out -w '%{http_code}' --max-time 120 -X POST \
+            "${WEBHOOK}${separator}${SELF_VAR}=${SELF_TAG}&${OTHER_VAR}=${OTHER_TAG}")
+          if [ "${status:0:1}" != "2" ]; then
+            echo "::error::Portainer answered HTTP $status"; head -c 500 /tmp/webhook.out; exit 1
+          fi
+          echo "Portainer: HTTP $status"
+
+      - name: Aguardar as versões no ar
+        env:
+          SELF_TAG: ${{ steps.tags.outputs.self }}
+          OTHER_TAG: ${{ steps.tags.outputs.other }}
+        run: |
+          for attempt in $(seq 1 36); do
+            body=$(curl -fsS --max-time 10 -H 'Cache-Control: no-cache' "$HEALTH_URL?t=$(date +%s)" 2>/dev/null || true)
+            if echo "$body" | jq -e --arg s "$SELF_KEY" --arg sv "$SELF_TAG" --arg o "$OTHER_KEY" --arg ov "$OTHER_TAG" \
+                '.status == "ok" and .[$s].version == $sv and .[$o].version == $ov' >/dev/null 2>&1; then
+              echo "No ar: $body"; exit 0
+            fi
+            echo "Tentativa $attempt: ${body:-sem resposta}"; sleep 10
+          done
+          echo "::error::After 6 minutes /api/health does not report $SELF_IMAGE $SELF_TAG and $OTHER_IMAGE $OTHER_TAG"
+          exit 1
+
+      - name: Resumo
+        if: always()
+        env:
+          SELF_TAG: ${{ steps.tags.outputs.self }}
+          OTHER_TAG: ${{ steps.tags.outputs.other }}
+        run: |
+          {
+            echo "### Deploy"
+            echo "| Serviço | Tag |"
+            echo "| --- | --- |"
+            echo "| $SELF_IMAGE | \`${SELF_TAG:-?}\` |"
+            echo "| $OTHER_IMAGE | \`${OTHER_TAG:-?}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

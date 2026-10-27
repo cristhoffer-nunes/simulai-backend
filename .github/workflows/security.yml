@@ -1,0 +1,163 @@
+# Step 1 of 3 on master: tests and security gates. "Imagem" (release.yml) only runs when every job
+# here passes on a push to master; on pull requests it is a merge check.
+name: Segurança e testes
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+  IMAGE: simulai-backend
+
+jobs:
+  quality:
+    name: Lint, tipos e testes (cobertura ≥ 80%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint:check
+      - name: Tipos
+        run: npm run typecheck
+      - name: Testes com cobertura (mínimo 80%)
+        run: npm run test:cov
+
+  database:
+    name: Schema, migrations e seed
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: simulai
+          POSTGRES_PASSWORD: simulai
+          POSTGRES_DB: dev
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U simulai" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: 'postgresql://simulai:simulai@localhost:5432/dev?schema=simulai_service'
+      SHADOW_DATABASE_URL: 'postgresql://simulai:simulai@localhost:5432/shadow'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Schema válido e formatado
+        run: npx prisma validate && npx prisma format --check
+      - name: Migrations (duas vezes, devem ser idempotentes)
+        run: npx prisma migrate deploy && npx prisma migrate deploy
+      - name: Seed (duas vezes, deve ser idempotente)
+        env:
+          SEED_ADMIN_EMAIL: admin@example.com
+          SEED_ADMIN_PASSWORD: ci-only-Password1!
+        run: npm run prisma:seed && npm run prisma:seed
+
+  dependencies:
+    name: Dependências (npm audit, bloqueia high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Dependências de produção
+        run: npm audit --omit=dev --audit-level=high
+      - name: Dependências de desenvolvimento (só relatório)
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+  secrets:
+    name: Segredos no histórico (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          # The checkout belongs to the runner user, not the container's: let git read it anyway.
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --verbose --exit-code 1
+
+  sast:
+    name: Vulnerabilidades no código (Semgrep)
+    runs-on: ubuntu-latest
+    env:
+      SEMGREP_RULES: p/ci p/owasp-top-ten p/typescript p/nodejsscan
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Instalar Semgrep
+        run: pipx install semgrep==1.182.1
+      - name: Semgrep (bloqueia severidade ERROR; WARNING só relata)
+        run: |
+          configs=(); for rule in $SEMGREP_RULES; do configs+=(--config "$rule"); done
+          semgrep scan "${configs[@]}" --metrics=off --disable-version-check --json --output semgrep.json
+          python3 - <<'PY'
+          import json, os, sys
+          results = json.load(open("semgrep.json"))["results"]
+          blocking = [r for r in results if r["extra"]["severity"] == "ERROR"]
+          lines = ["### Semgrep", "", f"{len(results)} achado(s), {len(blocking)} bloqueante(s).", ""]
+          for r in results:
+              where = f'{r["path"]}:{r["start"]["line"]}'
+              rule = r["check_id"].rsplit(".", 1)[-1]
+              level = "error" if r["extra"]["severity"] == "ERROR" else "warning"
+              print(f'::{level} file={r["path"]},line={r["start"]["line"]},title={rule}::{r["extra"]["message"][:300]}')
+              lines.append(f'- **{r["extra"]["severity"]}** `{rule}` em `{where}`')
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("\n".join(lines) + "\n")
+          sys.exit(1 if blocking else 0)
+          PY
+      - name: Relatório
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: semgrep
+          path: semgrep.json
+          if-no-files-found: ignore
+
+  image:
+    name: Imagem (build e Trivy, bloqueia high/critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build (sem push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ${{ env.IMAGE }}:ci
+          cache-from: type=gha,scope=${{ env.IMAGE }}
+          cache-to: type=gha,mode=max,scope=${{ env.IMAGE }}
+      # Pinned by commit: trivy-action tags up to 0.34.2 were hijacked in March 2026 (CVE-2026-33634).
+      - name: Trivy (sistema e bibliotecas)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.1
+          image-ref: ${{ env.IMAGE }}:ci
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
