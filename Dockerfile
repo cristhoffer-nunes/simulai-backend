@@ -9,6 +9,8 @@ RUN npm ci
 COPY . .
 RUN npx prisma generate
 RUN npm run build
+# The seed (roles, permissions, catalog, first admin) runs in production without ts-node.
+RUN npx tsc -p tsconfig.seed.json
 
 # --- runtime ---
 # Debian (glibc), not Alpine: same reasons as lawsuits-management-backend (Docker DNS + Prisma
@@ -21,11 +23,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 
 COPY package*.json ./
 COPY prisma ./prisma
-RUN npm ci --omit=dev --ignore-scripts && npx prisma generate
+# Install scripts run on purpose: @prisma/engines downloads the query and schema engines here, at
+# build time, so `prisma migrate deploy` works at startup without reaching the internet.
+RUN npm ci --omit=dev && npx prisma generate && npm cache clean --force
 
 ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-seed ./dist-seed
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && mkdir -p /app/keys && chown -R node:node /app
 

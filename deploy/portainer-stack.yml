@@ -1,0 +1,96 @@
+# Portainer stack: simulai (simulai-frontend + simulai-backend).
+#
+# Como usar:
+# 1. Portainer -> Stacks -> Add stack -> nome "simulai" -> cole este arquivo no editor Web.
+# 2. Na secao "Environment variables" do stack (NAO no YAML), cadastre as variaveis abaixo com os
+#    valores reais. Nenhum segredo fica escrito neste arquivo.
+# 3. Deploy the stack.
+#
+# Variaveis que voce precisa preencher no Portainer:
+#   SIMULAI_DOMAIN           simulai.cristhoffersantos.com.br (sem https://)
+#   BACKEND_IMAGE_TAG        ex: 0.11.0
+#   FRONTEND_IMAGE_TAG       ex: 0.8.0
+#   DATABASE_URL             postgresql://simulai_backend_prd:<senha>@postgres-shared:5432/prd?schema=simulai_service
+#                            (o "?schema=simulai_service" e obrigatorio; o backend recusa subir sem ele)
+#   JWT_PRIVATE_KEY          private.pem em base64, uma linha so: base64 -w0 keys/private.pem
+#   JWT_PUBLIC_KEY           public.pem em base64, uma linha so:  base64 -w0 keys/public.pem
+#                            (par proprio do Simulai, gerado com `npm run keys:generate`; nunca o do lawsuits)
+#   RESEND_API_KEY           chave do Resend
+#   EMAIL_FROM               ex: Simulai <no-reply@cristhoffersantos.com.br>
+#   SEED_ADMIN_EMAIL         (opcional) e-mail do primeiro administrador
+#   SEED_ADMIN_PASSWORD      (opcional) senha forte: 8+ caracteres, minuscula, maiuscula, numero e simbolo
+#
+# Na subida, o backend aplica as migrations pendentes e o seed (papeis, permissoes, catalogo e o
+# primeiro admin, se SEED_ADMIN_* estiverem preenchidas). Os dois sao idempotentes: rodar de novo
+# nao muda nada. Depois que o admin existir, as variaveis SEED_ADMIN_* podem ser apagadas.
+#
+# Redes:
+# - simulai-internal: rede privada deste stack. So o frontend e o backend estao nela, entao o
+#   backend so e alcancavel pelo frontend (BACKEND_INTERNAL_URL abaixo).
+# - O backend NAO entra na traefik-net e nao tem labels: nao ha rota publica para ele.
+# - shared-postgres-net: so o backend, para falar com o postgres-shared.
+# - O Simulai nao usa Redis.
+
+services:
+  simulai-backend:
+    image: registry.cristhoffersantos.com.br/simulai-backend:${BACKEND_IMAGE_TAG}
+    container_name: simulai-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      JWT_PRIVATE_KEY_PATH: /app/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /app/keys/public.pem
+      CORS_ORIGIN: https://${SIMULAI_DOMAIN}
+      FRONTEND_URL: https://${SIMULAI_DOMAIN}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      RUN_MIGRATIONS: "true"
+      RUN_SEED: "true"
+    networks:
+      - simulai-internal
+      - shared-postgres-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/simulai-backend/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Migrations e seed rodam antes da API subir.
+      start_period: 90s
+
+  simulai-frontend:
+    image: registry.cristhoffersantos.com.br/simulai-frontend:${FRONTEND_IMAGE_TAG}
+    container_name: simulai-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_INTERNAL_URL: http://simulai-backend:3002/simulai-backend/v1
+      # Igual ao REFRESH_TOKEN_TTL_SECONDS do backend (14 dias).
+      SESSION_MAX_AGE_SECONDS: "1209600"
+    networks:
+      - traefik-net
+      - simulai-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.simulai.rule=Host(`${SIMULAI_DOMAIN}`)"
+      - "traefik.http.routers.simulai.entrypoints=websecure"
+      - "traefik.http.routers.simulai.tls=true"
+      - "traefik.http.routers.simulai.tls.certresolver=le"
+      - "traefik.http.services.simulai.loadbalancer.server.port=3000"
+    depends_on:
+      simulai-backend:
+        condition: service_healthy
+
+networks:
+  simulai-internal:
+    name: simulai-internal
+    driver: bridge
+  traefik-net:
+    external: true
+  shared-postgres-net:
+    external: true

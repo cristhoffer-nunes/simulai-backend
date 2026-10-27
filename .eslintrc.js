@@ -12,7 +12,7 @@ module.exports = {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js', 'dist', 'node_modules', 'coverage'],
+  ignorePatterns: ['.eslintrc.js', 'dist', 'dist-seed', 'node_modules', 'coverage'],
   rules: {
     'prettier/prettier': 'warn',
     '@typescript-eslint/interface-name-prefix': 'off',

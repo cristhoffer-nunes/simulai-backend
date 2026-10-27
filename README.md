@@ -109,6 +109,33 @@ docker compose up --build   # container na rede shared-postgres-net
 
 Swagger (fora de produção): `/simulai-backend/docs`.
 
+## Deploy na VPS (Portainer)
+
+O stack `simulai` (frontend + backend) está em [`deploy/portainer-stack.yml`](deploy/portainer-stack.yml),
+com a lista de variáveis a preencher no Portainer. O backend fica só na rede privada do stack
+(`simulai-internal`) e na `shared-postgres-net`: não entra na `traefik-net` e não tem rota pública.
+Só o frontend o alcança.
+
+1. **Banco (uma vez):** rode `prisma/provisioning.sql` no database `prd` com o sufixo `prd` e uma
+   senha forte.
+2. **Chaves (uma vez):** `npm run keys:generate` numa máquina sua; no Portainer vão em base64
+   (`base64 -w0 keys/private.pem`, `base64 -w0 keys/public.pem`). Guarde os arquivos fora do
+   repositório: trocar as chaves derruba todas as sessões.
+3. **Imagens:** a partir da `master`, no diretório de cada repositório:
+
+   ```bash
+   docker build -t registry.cristhoffersantos.com.br/simulai-backend:<versão> .
+   docker push registry.cristhoffersantos.com.br/simulai-backend:<versão>
+   ```
+
+   Use a versão do `package.json` como tag (o mesmo para `simulai-frontend`).
+4. **Stack:** cole o arquivo no Portainer, preencha as variáveis e faça o deploy. Na subida o
+   container aplica as migrations pendentes (`prisma migrate deploy`) e o seed. Se uma migration
+   falhar, o container para e a API não sobe. `RUN_MIGRATIONS=false` / `RUN_SEED=false` desligam
+   esses passos.
+5. **Atualizar:** gere as novas imagens, troque `BACKEND_IMAGE_TAG` / `FRONTEND_IMAGE_TAG` no stack
+   e clique em *Update the stack* com *Re-pull image*.
+
 ## Endpoints
 
 Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.

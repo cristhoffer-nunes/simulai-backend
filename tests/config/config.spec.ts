@@ -26,6 +26,27 @@ describe('validateEnv', () => {
   });
 });
 
+describe('blank optional settings', () => {
+  it('treats empty strings as not set (blank Portainer variables)', () => {
+    const env = validateEnv({
+      ...base,
+      RESEND_API_KEY: '',
+      SEED_ADMIN_EMAIL: '',
+      SEED_ADMIN_PASSWORD: '',
+      SEED_ADMIN_DISPLAY_NAME: '',
+    });
+    expect([env.RESEND_API_KEY, env.SEED_ADMIN_EMAIL, env.SEED_ADMIN_PASSWORD]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(() => validateEnv({ ...base, SEED_ADMIN_EMAIL: 'not-an-email' })).toThrow(
+      /SEED_ADMIN_EMAIL/,
+    );
+    expect(validateEnv({ ...base, SEED_ADMIN_EMAIL: 'a@b.co' }).SEED_ADMIN_EMAIL).toBe('a@b.co');
+  });
+});
+
 describe('AppConfigService', () => {
   const env = validateEnv({
     ...base,

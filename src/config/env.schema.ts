@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+/** Optional settings left blank (e.g. an empty Portainer variable) count as not set. */
+const blankAsUnset = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3002),
@@ -37,12 +41,12 @@ export const envSchema = z.object({
 
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
 
-  RESEND_API_KEY: z.string().optional(),
+  RESEND_API_KEY: blankAsUnset(z.string()),
   EMAIL_FROM: z.string().min(1).default('Simulai <no-reply@example.com>'),
 
-  SEED_ADMIN_EMAIL: z.string().email().optional(),
-  SEED_ADMIN_PASSWORD: z.string().min(8).optional(),
-  SEED_ADMIN_DISPLAY_NAME: z.string().min(1).optional(),
+  SEED_ADMIN_EMAIL: blankAsUnset(z.string().email()),
+  SEED_ADMIN_PASSWORD: blankAsUnset(z.string().min(8)),
+  SEED_ADMIN_DISPLAY_NAME: blankAsUnset(z.string().min(1)),
 });
 
 export type Env = z.infer<typeof envSchema>;
