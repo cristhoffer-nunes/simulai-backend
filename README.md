@@ -127,6 +127,9 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | POST | `/admin/users` | `users.manage` | Cria a conta e devolve `accessLink` |
 | PATCH | `/admin/users/:id` | `users.manage` | Nome, papel, ativar/desativar (não pode em si mesmo) |
 | POST | `/admin/users/:id/access-link` | `users.manage` | Gera um novo link de acesso |
+| GET | `/taxonomy` | `study.access` | Áreas → disciplinas → assuntos (catálogo + os do aluno), com contagem de questões ativas |
+| POST | `/subjects` | `study.access` | Cria disciplina privada; se já existir uma com o mesmo nome (sem diferenciar maiúsculas e acentos), devolve a existente com 200 |
+| POST | `/subjects/:id/topics` | `study.access` | Cria assunto privado, com a mesma regra de reaproveitamento |
 
 Erros seguem RFC 9457 (`application/problem+json`), com `title` igual ao código do erro
 (`INVALID_CREDENTIALS`, `USER_NOT_FOUND`...), o mesmo formato do lawsuits.

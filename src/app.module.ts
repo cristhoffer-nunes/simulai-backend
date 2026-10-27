@@ -6,9 +6,17 @@ import { LoggerModule } from './shared/logging/logger.module';
 import { ProblemDetailsFilter } from './shared/errors/problem-details.filter';
 import { IdentityModule } from './modules/identity/identity.module';
 import { HealthModule } from './health/health.module';
+import { QuestionBankModule } from './modules/question-bank/question-bank.module';
 
 @Module({
-  imports: [AppConfigModule, LoggerModule, PrismaModule, IdentityModule, HealthModule],
+  imports: [
+    AppConfigModule,
+    LoggerModule,
+    PrismaModule,
+    IdentityModule,
+    QuestionBankModule,
+    HealthModule,
+  ],
   providers: [{ provide: APP_FILTER, useClass: ProblemDetailsFilter }],
 })
 export class AppModule {}

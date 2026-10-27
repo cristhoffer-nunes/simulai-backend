@@ -11,7 +11,9 @@ export type ErrorKind =
   | 'INVALID_RESET_TOKEN'
   | 'WEAK_PASSWORD'
   | 'USER_NOT_FOUND'
-  | 'CANNOT_MODIFY_SELF';
+  | 'CANNOT_MODIFY_SELF'
+  | 'NOT_FOUND'
+  | 'CONFLICT';
 
 export class AppError {
   constructor(
@@ -71,6 +73,17 @@ export class AppError {
   }
 }
 
+export class ResourceErrors {
+  // 404 for missing AND for other people's resources: never reveal that an id exists (RN-001).
+  static notFound(resource: string): AppError {
+    return new AppError('NOT_FOUND', `${resource} not found.`);
+  }
+
+  static conflict(message: string, details?: unknown): AppError {
+    return new AppError('CONFLICT', message, details);
+  }
+}
+
 export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   VALIDATION_ERROR: HttpStatus.BAD_REQUEST,
   INVALID_CREDENTIALS: HttpStatus.UNAUTHORIZED,
@@ -83,4 +96,6 @@ export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   WEAK_PASSWORD: HttpStatus.BAD_REQUEST,
   USER_NOT_FOUND: HttpStatus.NOT_FOUND,
   CANNOT_MODIFY_SELF: HttpStatus.CONFLICT,
+  NOT_FOUND: HttpStatus.NOT_FOUND,
+  CONFLICT: HttpStatus.CONFLICT,
 };
