@@ -142,6 +142,10 @@ Todos sob `/simulai-backend/v1`, exceto `/simulai-backend/health`.
 | POST | `/imports/validate` | `study.access` | Recebe o JSON da IA (`schemaVersion` "1.0", até 100 questões, 1 MB) e devolve `{ previewId, expiresAt, validItems, invalidItems }` com erros por índice e campo, duplicatas exatas (`duplicateOf`: `bank`/`batch`) e disciplinas/assuntos novos. Nada entra no banco. Versão desconhecida → 422. Limite: 30 validações a cada 10 min |
 | POST | `/imports` | `study.access` | Confirma `{ previewId, selectedIndexes, collectionId?, idempotencyKey }` numa transação: cria disciplinas/assuntos que faltam, as questões (com `sourceImportId`) e, se pedido, as coloca na coleção. Repetir a mesma `idempotencyKey` devolve o mesmo resultado sem duplicar. Prévia vencida ou descartada → 410 |
 | GET | `/imports/:id` | `study.access` | Resumo `{ importedCount, skippedDuplicateCount, rejectedCount, … }` |
+| GET | `/simulations/availability` | `study.access` | Questões elegíveis (ativas) por disciplina, com filtros `difficulty` e `collectionId` |
+| POST | `/simulations` | `study.access` | `{ title?, mode: "exam", questionCount, subjectIds, difficulty, distribution: "balanced", timed, durationSeconds?, collectionId? }`. Sorteia N questões distintas com distribuição equilibrada (20 em 2 disciplinas → 10/10; a sobra vai para a primeira escolhida) e congela cópias delas. Falta de questões → 422 `INSUFFICIENT_QUESTIONS` com `{ subjectId, required, available }` |
+| GET | `/simulations` | `study.access` | Lista (padrão: `status=ready`) com nº de tentativas, tentativa em andamento e última nota; paginação por `cursor` |
+| GET / PATCH | `/simulations/:id` | `study.access` | Metadados e distribuição, **sem gabarito**; `PATCH { status }` arquiva ou reativa |
 | DELETE | `/imports/:id` | `study.access` | Descarta a prévia |
 
 Erros seguem RFC 9457 (`application/problem+json`), com `title` igual ao código do erro

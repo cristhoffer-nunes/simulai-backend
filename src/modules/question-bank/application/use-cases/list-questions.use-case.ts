@@ -7,7 +7,7 @@ import {
   IQuestionRepository,
   QUESTION_REPOSITORY,
 } from '../../domain/questions/question.repository';
-import { decodeCursor, encodeCursor } from '../cursor';
+import { decodeCursor, encodeCursor } from '../../../../shared/pagination/cursor';
 import { QuestionListResponse } from '../dto/question-views';
 
 export interface ListQuestionsInput {

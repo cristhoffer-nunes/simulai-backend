@@ -1,4 +1,4 @@
-import { decodeCursor, encodeCursor } from '@/modules/question-bank/application/cursor';
+import { decodeCursor, encodeCursor } from '@/shared/pagination/cursor';
 import { ArchiveQuestionUseCase } from '@/modules/question-bank/application/use-cases/archive-question.use-case';
 import { CreateQuestionUseCase } from '@/modules/question-bank/application/use-cases/create-question.use-case';
 import { GetQuestionUseCase } from '@/modules/question-bank/application/use-cases/get-question.use-case';

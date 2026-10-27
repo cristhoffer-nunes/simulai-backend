@@ -7,6 +7,7 @@ import { ProblemDetailsFilter } from './shared/errors/problem-details.filter';
 import { IdentityModule } from './modules/identity/identity.module';
 import { HealthModule } from './health/health.module';
 import { QuestionBankModule } from './modules/question-bank/question-bank.module';
+import { SimulationsModule } from './modules/simulations/simulations.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { QuestionBankModule } from './modules/question-bank/question-bank.module
     PrismaModule,
     IdentityModule,
     QuestionBankModule,
+    SimulationsModule,
     HealthModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemDetailsFilter }],

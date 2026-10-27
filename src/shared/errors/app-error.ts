@@ -15,7 +15,11 @@ export type ErrorKind =
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'IMPORT_PREVIEW_EXPIRED'
-  | 'UNSUPPORTED_SCHEMA';
+  | 'UNSUPPORTED_SCHEMA'
+  | 'INSUFFICIENT_QUESTIONS'
+  | 'ATTEMPT_ALREADY_ACTIVE'
+  | 'ATTEMPT_FINISHED'
+  | 'SIMULATION_ARCHIVED';
 
 export class AppError {
   constructor(
@@ -103,6 +107,36 @@ export class ResourceErrors {
   }
 }
 
+export class ExamErrors {
+  static insufficientQuestions(
+    shortages: { subjectId: string; required: number; available: number }[],
+  ): AppError {
+    return new AppError(
+      'INSUFFICIENT_QUESTIONS',
+      'Not enough eligible questions for a balanced distribution.',
+      shortages,
+    );
+  }
+
+  static attemptAlreadyActive(attemptId: string): AppError {
+    return new AppError(
+      'ATTEMPT_ALREADY_ACTIVE',
+      'This simulation already has an attempt in progress.',
+      {
+        attemptId,
+      },
+    );
+  }
+
+  static attemptFinished(status: string): AppError {
+    return new AppError('ATTEMPT_FINISHED', 'This attempt is already finished.', { status });
+  }
+
+  static simulationArchived(): AppError {
+    return new AppError('SIMULATION_ARCHIVED', 'Archived simulations do not accept new attempts.');
+  }
+}
+
 export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   VALIDATION_ERROR: HttpStatus.BAD_REQUEST,
   INVALID_CREDENTIALS: HttpStatus.UNAUTHORIZED,
@@ -119,4 +153,8 @@ export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   CONFLICT: HttpStatus.CONFLICT,
   IMPORT_PREVIEW_EXPIRED: HttpStatus.GONE,
   UNSUPPORTED_SCHEMA: HttpStatus.UNPROCESSABLE_ENTITY,
+  INSUFFICIENT_QUESTIONS: HttpStatus.UNPROCESSABLE_ENTITY,
+  ATTEMPT_ALREADY_ACTIVE: HttpStatus.CONFLICT,
+  ATTEMPT_FINISHED: HttpStatus.CONFLICT,
+  SIMULATION_ARCHIVED: HttpStatus.CONFLICT,
 };
