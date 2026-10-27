@@ -28,7 +28,9 @@ function build(claimed = 1) {
     questionImport: { updateMany: jest.fn().mockResolvedValue({ count: claimed }) },
     subject: { createMany: jest.fn() },
     topic: { createMany: jest.fn() },
-    question: { create: jest.fn() },
+    question: { createMany: jest.fn() },
+    questionOption: { createMany: jest.fn() },
+    collectionQuestion: { createMany: jest.fn() },
   };
   const prisma = {
     questionImport: { create: jest.fn(), findFirst: jest.fn(), updateMany: jest.fn() },
@@ -120,24 +122,29 @@ describe('PrismaQuestionImportRepository', () => {
     expect(tx.topic.createMany.mock.calls[0][0].data[0]).toEqual(
       expect.objectContaining({ name: 'Neonatologia' }),
     );
-    const data = tx.question.create.mock.calls[0][0].data;
-    expect(data).toEqual(
+    const data = tx.question.createMany.mock.calls[0][0].data;
+    expect(data[0]).toEqual(
       expect.objectContaining({ sourceImportId: p.questionImport.id, sourceReference: 'Cap. 1' }),
     );
-    expect(data.options.create).toHaveLength(2);
-    expect(data.collections).toEqual({ create: [{ collectionId: 'c1' }] });
+    expect(tx.questionOption.createMany.mock.calls[0][0].data).toEqual([
+      { questionId: 'q1', optionKey: 'A', text: 'Mitral', isCorrect: false },
+      { questionId: 'q1', optionKey: 'B', text: 'Tricúspide', isCorrect: true },
+    ]);
+    expect(tx.collectionQuestion.createMany).toHaveBeenCalledWith({
+      data: [{ collectionId: 'c1', questionId: 'q1' }],
+    });
   });
 
   it('writes nothing when the preview was already taken, and skips empty creations', async () => {
     const taken = build(0);
     await expect(taken.repo.commit(plan())).resolves.toBe(false);
-    expect(taken.tx.question.create).not.toHaveBeenCalled();
+    expect(taken.tx.question.createMany).not.toHaveBeenCalled();
 
     const { tx, repo } = build();
     await repo.commit({ ...plan(false), newSubjects: [], newTopics: [] });
     expect(tx.subject.createMany).not.toHaveBeenCalled();
     expect(tx.topic.createMany).not.toHaveBeenCalled();
-    expect(tx.question.create.mock.calls[0][0].data.collections).toBeUndefined();
+    expect(tx.collectionQuestion.createMany).not.toHaveBeenCalled();
   });
 
   it('treats a unique violation on the key as a lost race and rethrows other errors', async () => {

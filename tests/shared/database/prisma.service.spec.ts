@@ -1,6 +1,7 @@
 // The real client needs the native query engine; the service logic does not.
 jest.mock('@prisma/client', () => ({
   PrismaClient: class {
+    constructor(public readonly options: unknown) {}
     async $connect(): Promise<void> {}
     async $disconnect(): Promise<void> {}
   },
@@ -27,6 +28,17 @@ describe('PrismaService', () => {
     expect(log).toHaveBeenCalledWith(
       'Connected to Postgres (database "dev", schema "simulai_service").',
     );
+  });
+
+  it('allows longer interactive transactions than the Prisma defaults', () => {
+    const service = new PrismaService({ databaseUrl: 'postgresql://u:p@h:5432/dev' } as never);
+    expect(
+      (service as unknown as { options: { transactionOptions: unknown } }).options
+        .transactionOptions,
+    ).toEqual({
+      maxWait: 10_000,
+      timeout: 30_000,
+    });
   });
 
   it('reports the public schema when none is given', async () => {

@@ -86,34 +86,40 @@ export class PrismaQuestionImportRepository implements IQuestionImportRepository
         if (plan.newTopics.length > 0) {
           await tx.topic.createMany({ data: plan.newTopics.map((topic) => ({ ...topic })) });
         }
-        for (const question of plan.questions) {
-          await tx.question.create({
-            data: {
-              id: question.id,
-              ownerUserId: question.ownerUserId,
-              subjectId: question.subjectId,
-              topicId: question.topicId,
-              type: 'multiple_choice',
-              statement: question.content.statement,
-              explanation: question.content.explanation,
-              difficulty: question.content.difficulty,
-              status: question.status,
-              contentHash: question.contentHash,
-              sourceImportId: question.sourceImportId,
-              sourceReference: question.sourceReference,
-              createdAt: question.createdAt,
-              updatedAt: question.updatedAt,
-              options: {
-                create: question.content.options.map((option) => ({
-                  optionKey: option.key,
-                  text: option.text,
-                  isCorrect: option.isCorrect,
-                })),
-              },
-              ...(plan.collection
-                ? { collections: { create: [{ collectionId: plan.collection.id }] } }
-                : {}),
-            },
+        // Bulk inserts: a fixed number of round trips whatever the number of questions, so the
+        // transaction stays short even with a remote database (up to 100 questions per import).
+        await tx.question.createMany({
+          data: plan.questions.map((question) => ({
+            id: question.id,
+            ownerUserId: question.ownerUserId,
+            subjectId: question.subjectId,
+            topicId: question.topicId,
+            type: 'multiple_choice',
+            statement: question.content.statement,
+            explanation: question.content.explanation,
+            difficulty: question.content.difficulty,
+            status: question.status,
+            contentHash: question.contentHash,
+            sourceImportId: question.sourceImportId,
+            sourceReference: question.sourceReference,
+            createdAt: question.createdAt,
+            updatedAt: question.updatedAt,
+          })),
+        });
+        await tx.questionOption.createMany({
+          data: plan.questions.flatMap((question) =>
+            question.content.options.map((option) => ({
+              questionId: question.id,
+              optionKey: option.key,
+              text: option.text,
+              isCorrect: option.isCorrect,
+            })),
+          ),
+        });
+        if (plan.collection) {
+          const collectionId = plan.collection.id;
+          await tx.collectionQuestion.createMany({
+            data: plan.questions.map((question) => ({ collectionId, questionId: question.id })),
           });
         }
         return true;
