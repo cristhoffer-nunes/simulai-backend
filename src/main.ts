@@ -1,18 +1,13 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
-import fastifyHelmet from '@fastify/helmet';
-import fastifyCors from '@fastify/cors';
-import fastifyRateLimit from '@fastify/rate-limit';
 import { AppModule } from './app.module';
+import { configureApp, GLOBAL_PREFIX } from './bootstrap/configure-app';
 import { AppConfigService } from './config/app-config.service';
-
-const GLOBAL_PREFIX = 'simulai-backend';
 
 async function bootstrap() {
   const adapter = new FastifyAdapter({
@@ -30,25 +25,7 @@ async function bootstrap() {
 
   app.useLogger(app.get(Logger));
 
-  await app.register(fastifyHelmet);
-  await app.register(fastifyCors, {
-    origin: config.corsOrigins,
-    credentials: true,
-  });
-  await app.register(fastifyRateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
-  });
-  app.setGlobalPrefix(GLOBAL_PREFIX);
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' }); // ADR-012: /v1/...
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  await configureApp(app, { corsOrigins: config.corsOrigins });
 
   if (!config.isProduction) {
     const swaggerConfig = new DocumentBuilder()
