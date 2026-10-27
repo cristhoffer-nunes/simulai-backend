@@ -34,7 +34,10 @@ COPY package*.json ./
 COPY prisma ./prisma
 # Install scripts run on purpose: @prisma/engines downloads the query and schema engines here, at
 # build time, so `prisma migrate deploy` works at startup without reaching the internet.
-RUN npm ci --omit=dev && npx prisma generate && npm cache clean --force
+# The service never runs npm: it is dropped (with corepack/yarn) from the final image after install.
+RUN npm ci --omit=dev && npx prisma generate && npm cache clean --force \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn* \
+              /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-debian-openssl-3.0.x.so.node
 
