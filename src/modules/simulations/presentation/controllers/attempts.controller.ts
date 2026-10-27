@@ -87,6 +87,7 @@ export class AttemptsController {
       attemptId,
       questionId,
       selectedOptionId: dto.selectedOptionId,
+      flagged: dto.flagged,
     });
     if (result.isFailure) throw new DomainException(result.error);
     return result.value;

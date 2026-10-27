@@ -9,12 +9,16 @@ export interface SaveAnswerInput {
   userId: string;
   attemptId: string;
   questionId: string;
-  selectedOptionId: string | null;
+  /** undefined = keep the current mark; null = clear it. */
+  selectedOptionId?: string | null;
+  /** undefined = keep the current flag. */
+  flagged?: boolean;
 }
 
 export interface SavedAnswer {
   questionId: string;
   selectedOptionId: string | null;
+  flagged: boolean;
   answeredAt: Date;
 }
 
@@ -36,6 +40,13 @@ export class SaveAnswerUseCase implements ISaveAnswerUseCase {
   ) {}
 
   async execute(input: SaveAnswerInput): Promise<Result<SavedAnswer, AppError>> {
+    if (input.selectedOptionId === undefined && input.flagged === undefined) {
+      return Result.fail(
+        AppError.validation('Send selectedOptionId, flagged or both.', [
+          { path: 'selectedOptionId', code: 'REQUIRED', message: 'Nothing to save.' },
+        ]),
+      );
+    }
     const found = await this.attempts.findOwned(input.userId, input.attemptId);
     if (!found) return Result.fail(ResourceErrors.notFound('Attempt'));
     const simulation = await this.simulations.findOwned(input.userId, found.simulationId);
@@ -43,12 +54,15 @@ export class SaveAnswerUseCase implements ISaveAnswerUseCase {
 
     const now = new Date();
     const locked = await this.attempts.withLock(input.userId, input.attemptId, (attempt) => {
-      const result = attempt.answer(
-        simulation.questions,
-        input.questionId,
-        input.selectedOptionId,
-        now,
-      );
+      let result =
+        input.selectedOptionId !== undefined
+          ? attempt.answer(simulation.questions, input.questionId, input.selectedOptionId, now)
+          : undefined;
+      if (input.flagged !== undefined && (!result || result.isSuccess)) {
+        result = attempt.flag(simulation.questions, input.questionId, input.flagged, now);
+      }
+      // One of the two always ran (checked above).
+      result = result!;
       if (result.isFailure && result.error === 'DEADLINE_PASSED') {
         attempt.finish(simulation.questions, 'timeout', now);
       }
@@ -62,6 +76,7 @@ export class SaveAnswerUseCase implements ISaveAnswerUseCase {
     return Result.ok({
       questionId: answer.simulationQuestionId,
       selectedOptionId: answer.selectedOptionId,
+      flagged: answer.flagged,
       answeredAt: answer.answeredAt,
     });
   }

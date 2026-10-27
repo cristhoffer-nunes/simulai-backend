@@ -364,6 +364,8 @@ model AttemptAnswer {
   simulationId         String   @map("simulation_id") @db.Uuid
   simulationQuestionId String   @map("simulation_question_id") @db.Uuid
   selectedOptionKey    String?  @map("selected_option_key") @db.VarChar(1)
+  /// "Revisar depois": lembrete do aluno durante a prova; não afeta a nota.
+  flagged              Boolean  @default(false)
   answeredAt           DateTime @map("answered_at") @db.Timestamptz
 
   attempt            SimulationAttempt  @relation(fields: [attemptId, simulationId], references: [id, simulationId], onDelete: Cascade)

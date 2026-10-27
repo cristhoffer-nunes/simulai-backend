@@ -82,7 +82,10 @@ describe('Attempt', () => {
       finishReason: null,
       score: null,
       answers: new Map([
-        [q(0), { simulationQuestionId: q(0), selectedOptionId: 'A', answeredAt: t0 }],
+        [
+          q(0),
+          { simulationQuestionId: q(0), selectedOptionId: 'A', flagged: false, answeredAt: t0 },
+        ],
       ]),
       createdAt: t0,
     });

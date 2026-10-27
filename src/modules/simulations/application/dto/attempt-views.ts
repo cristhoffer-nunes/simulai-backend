@@ -27,7 +27,12 @@ export interface AttemptView {
   serverNow: Date;
   totalQuestions: number;
   questions: ExamQuestionView[];
-  answers: { questionId: string; selectedOptionId: string | null; answeredAt: Date }[];
+  answers: {
+    questionId: string;
+    selectedOptionId: string | null;
+    flagged: boolean;
+    answeredAt: Date;
+  }[];
   result: AttemptScore | null;
 }
 
@@ -69,6 +74,7 @@ export function toAttemptView(
     answers: [...attempt.answers.values()].map((answer) => ({
       questionId: answer.simulationQuestionId,
       selectedOptionId: answer.selectedOptionId,
+      flagged: answer.flagged,
       answeredAt: answer.answeredAt,
     })),
     result: attempt.score,

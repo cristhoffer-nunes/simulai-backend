@@ -10,6 +10,8 @@ export interface AttemptAnswer {
   simulationQuestionId: string;
   /** null = the student cleared the mark (counts as blank). */
   selectedOptionId: string | null;
+  /** "Revisar depois": a reminder for the student; never affects the score. */
+  flagged: boolean;
   answeredAt: Date;
 }
 
@@ -153,7 +155,32 @@ export class Attempt {
     ) {
       return Result.fail('UNKNOWN_OPTION');
     }
-    const answer = { simulationQuestionId, selectedOptionId, answeredAt: now };
+    const flagged = this.props.answers.get(simulationQuestionId)?.flagged ?? false;
+    const answer = { simulationQuestionId, selectedOptionId, flagged, answeredAt: now };
+    this.props.answers.set(simulationQuestionId, answer);
+    this.changed.add(simulationQuestionId);
+    return Result.ok(answer);
+  }
+
+  /** Marks or unmarks a question to review later, with the same rules as answering. */
+  flag(
+    questions: readonly SimulationQuestion[],
+    simulationQuestionId: string,
+    flagged: boolean,
+    now = new Date(),
+  ): Result<AttemptAnswer, AnswerRejection> {
+    if (!this.isActive) return Result.fail('FINISHED');
+    if (this.isPastDeadline(now)) return Result.fail('DEADLINE_PASSED');
+    if (!questions.some((item) => item.id === simulationQuestionId)) {
+      return Result.fail('UNKNOWN_QUESTION');
+    }
+    const current = this.props.answers.get(simulationQuestionId);
+    const answer = {
+      simulationQuestionId,
+      selectedOptionId: current?.selectedOptionId ?? null,
+      flagged,
+      answeredAt: current?.answeredAt ?? now,
+    };
     this.props.answers.set(simulationQuestionId, answer);
     this.changed.add(simulationQuestionId);
     return Result.ok(answer);

@@ -36,7 +36,12 @@ describe('AttemptsController', () => {
       attemptId: 'a',
       questionId: 'q',
       selectedOptionId: null,
+      flagged: undefined,
     });
+    await controller.answer(user, 'a', 'q', { flagged: true });
+    expect(save.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({ selectedOptionId: undefined, flagged: true }),
+    );
     await controller.finish(user, 'a');
     expect(finish.execute).toHaveBeenCalledWith('u1', 'a');
     await controller.result(user, 'a');

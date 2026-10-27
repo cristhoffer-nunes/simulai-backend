@@ -15,6 +15,8 @@ export interface GradedQuestion {
   topicName: string | null;
   difficulty: QuestionDifficulty;
   selectedOptionId: string | null;
+  /** Marked "Revisar depois" during the exam. */
+  flagged: boolean;
   correctOptionId: string;
   explanation: string;
   verdict: Verdict;
@@ -48,7 +50,8 @@ export function gradeQuestions(
     .sort((a, b) => a.position - b.position)
     .map((question) => {
       const { snapshot } = question;
-      const selectedOptionId = answers.get(question.id)?.selectedOptionId ?? null;
+      const answer = answers.get(question.id);
+      const selectedOptionId = answer?.selectedOptionId ?? null;
       return {
         id: question.id,
         position: question.position,
@@ -60,6 +63,7 @@ export function gradeQuestions(
         topicName: snapshot.topicName,
         difficulty: snapshot.difficulty,
         selectedOptionId,
+        flagged: answer?.flagged ?? false,
         correctOptionId: snapshot.correctOptionId,
         explanation: snapshot.explanation,
         verdict: verdictOf(selectedOptionId, snapshot.correctOptionId),

@@ -109,9 +109,14 @@ export class PrismaAttemptRepository implements IAttemptRepository {
             simulationId: attempt.simulationId,
             simulationQuestionId: answer.simulationQuestionId,
             selectedOptionKey: answer.selectedOptionId,
+            flagged: answer.flagged,
             answeredAt: answer.answeredAt,
           },
-          update: { selectedOptionKey: answer.selectedOptionId, answeredAt: answer.answeredAt },
+          update: {
+            selectedOptionKey: answer.selectedOptionId,
+            flagged: answer.flagged,
+            answeredAt: answer.answeredAt,
+          },
         });
       }
     }
@@ -139,6 +144,7 @@ export class PrismaAttemptRepository implements IAttemptRepository {
         {
           simulationQuestionId: answer.simulationQuestionId,
           selectedOptionId: answer.selectedOptionKey,
+          flagged: answer.flagged,
           answeredAt: answer.answeredAt,
         },
       ]),
