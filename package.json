@@ -1,6 +1,6 @@
 {
   "name": "simulai-backend",
-  "version": "0.15.3",
+  "version": "0.16.0",
   "description": "Simulai — plataforma de questões e simulados. Monólito modular NestJS (auth, users, taxonomy, questions, collections, imports, simulations, analytics).",
   "private": true,
   "license": "UNLICENSED",

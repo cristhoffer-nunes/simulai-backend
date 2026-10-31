@@ -11,6 +11,10 @@ import {
   GetAttemptUseCase,
 } from './application/use-cases/get-attempt.use-case';
 import {
+  CONFIRM_ANSWER_USE_CASE,
+  ConfirmAnswerUseCase,
+} from './application/use-cases/confirm-answer.use-case';
+import {
   SAVE_ANSWER_USE_CASE,
   SaveAnswerUseCase,
 } from './application/use-cases/save-answer.use-case';
@@ -83,6 +87,7 @@ import { SimulationsController } from './presentation/controllers/simulations.co
     { provide: START_ATTEMPT_USE_CASE, useClass: StartAttemptUseCase },
     { provide: GET_ATTEMPT_USE_CASE, useClass: GetAttemptUseCase },
     { provide: SAVE_ANSWER_USE_CASE, useClass: SaveAnswerUseCase },
+    { provide: CONFIRM_ANSWER_USE_CASE, useClass: ConfirmAnswerUseCase },
     { provide: FINISH_ATTEMPT_USE_CASE, useClass: FinishAttemptUseCase },
     { provide: ATTEMPT_STATS_QUERY, useClass: PrismaAttemptStatsQuery },
     { provide: GET_ATTEMPT_RESULT_USE_CASE, useClass: GetAttemptResultUseCase },

@@ -20,6 +20,8 @@ export type ErrorKind =
   | 'ATTEMPT_ALREADY_ACTIVE'
   | 'ATTEMPT_FINISHED'
   | 'ATTEMPT_IN_PROGRESS'
+  | 'ANSWER_CONFIRMED'
+  | 'NOT_STUDY_MODE'
   | 'SIMULATION_ARCHIVED';
 
 export class AppError {
@@ -141,6 +143,19 @@ export class ExamErrors {
     );
   }
 
+  /** Study mode: a confirmed answer has been graded and cannot change. */
+  static answerConfirmed(): AppError {
+    return new AppError('ANSWER_CONFIRMED', 'This answer was confirmed and cannot change.');
+  }
+
+  /** Only study sessions grade answers one by one. */
+  static notStudyMode(): AppError {
+    return new AppError(
+      'NOT_STUDY_MODE',
+      'Answers are graded one by one only in study mode; finish the exam to see the result.',
+    );
+  }
+
   static simulationArchived(): AppError {
     return new AppError('SIMULATION_ARCHIVED', 'Archived simulations do not accept new attempts.');
   }
@@ -166,5 +181,7 @@ export const ERROR_KIND_HTTP_STATUS: Record<ErrorKind, HttpStatus> = {
   ATTEMPT_ALREADY_ACTIVE: HttpStatus.CONFLICT,
   ATTEMPT_FINISHED: HttpStatus.CONFLICT,
   ATTEMPT_IN_PROGRESS: HttpStatus.CONFLICT,
+  ANSWER_CONFIRMED: HttpStatus.CONFLICT,
+  NOT_STUDY_MODE: HttpStatus.CONFLICT,
   SIMULATION_ARCHIVED: HttpStatus.CONFLICT,
 };

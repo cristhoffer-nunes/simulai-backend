@@ -20,6 +20,7 @@ const item = (id: string, overrides: Partial<AttemptHistoryItem> = {}): AttemptH
   attemptId: id,
   simulationId: 'sim',
   title: 'Anatomia',
+  mode: 'exam',
   subjectNames: ['Anatomia'],
   attemptNumber: 1,
   status: 'completed',

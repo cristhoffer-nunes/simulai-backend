@@ -85,6 +85,8 @@ export class SaveAnswerUseCase implements ISaveAnswerUseCase {
     switch (rejection) {
       case 'UNKNOWN_QUESTION':
         return ResourceErrors.notFound('Question');
+      case 'CONFIRMED':
+        return ExamErrors.answerConfirmed();
       case 'UNKNOWN_OPTION':
         return AppError.validation('This option does not exist in the question.', [
           { path: 'selectedOptionId', code: 'UNKNOWN_OPTION_ID', message: 'Unknown option.' },

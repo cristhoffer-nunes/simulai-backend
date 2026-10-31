@@ -8,6 +8,7 @@ export interface AttemptHistoryItem {
   attemptId: string;
   simulationId: string;
   title: string;
+  mode: 'exam' | 'study';
   subjectNames: string[];
   attemptNumber: number;
   status: string;

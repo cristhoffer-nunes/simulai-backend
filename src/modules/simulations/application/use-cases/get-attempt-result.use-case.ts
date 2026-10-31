@@ -55,6 +55,7 @@ export class GetAttemptResultUseCase implements IGetAttemptResultUseCase {
       attemptId: attempt.id,
       simulationId: simulation.id,
       title: simulation.title,
+      mode: simulation.mode,
       attemptNumber,
       attemptCount,
       status: attempt.status,

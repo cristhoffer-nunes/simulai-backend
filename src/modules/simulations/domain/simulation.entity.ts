@@ -3,6 +3,8 @@ import { QuestionSnapshot, SimulationQuestion } from './snapshot';
 
 export type SimulationDifficulty = 'all' | 'easy' | 'medium' | 'hard';
 export type SimulationStatus = 'ready' | 'archived';
+/** exam: answer key at the end; study: each confirmed answer is graded on the spot, no timer. */
+export type SimulationMode = 'exam' | 'study';
 
 export interface SimulationConfiguration {
   subjectIds: string[];
@@ -18,7 +20,7 @@ export interface SimulationProps {
   id: string;
   ownerUserId: string;
   title: string;
-  mode: 'exam';
+  mode: SimulationMode;
   status: SimulationStatus;
   difficulty: SimulationDifficulty;
   timed: boolean;
@@ -31,6 +33,8 @@ export interface SimulationProps {
 export interface NewSimulation {
   ownerUserId: string;
   title: string;
+  /** Defaults to exam. A study session is never timed. */
+  mode?: SimulationMode;
   difficulty: SimulationDifficulty;
   timed: boolean;
   durationSeconds: number | null;
@@ -44,15 +48,17 @@ export class Simulation {
   private constructor(private props: SimulationProps) {}
 
   static create(input: NewSimulation, now = new Date()): Simulation {
+    const mode = input.mode ?? 'exam';
+    const timed = mode === 'exam' && input.timed;
     return new Simulation({
       id: randomUUID(),
       ownerUserId: input.ownerUserId,
       title: input.title,
-      mode: 'exam',
+      mode,
       status: 'ready',
       difficulty: input.difficulty,
-      timed: input.timed,
-      durationSeconds: input.timed ? input.durationSeconds : null,
+      timed,
+      durationSeconds: timed ? input.durationSeconds : null,
       configuration: input.configuration,
       questions: input.picked.map((item, index) => ({
         id: randomUUID(),
@@ -77,7 +83,7 @@ export class Simulation {
   get title(): string {
     return this.props.title;
   }
-  get mode(): 'exam' {
+  get mode(): SimulationMode {
     return this.props.mode;
   }
   get status(): SimulationStatus {

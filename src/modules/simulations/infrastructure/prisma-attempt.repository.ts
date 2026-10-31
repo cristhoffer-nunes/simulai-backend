@@ -111,11 +111,13 @@ export class PrismaAttemptRepository implements IAttemptRepository {
             selectedOptionKey: answer.selectedOptionId,
             flagged: answer.flagged,
             answeredAt: answer.answeredAt,
+            confirmedAt: answer.confirmedAt,
           },
           update: {
             selectedOptionKey: answer.selectedOptionId,
             flagged: answer.flagged,
             answeredAt: answer.answeredAt,
+            confirmedAt: answer.confirmedAt,
           },
         });
       }
@@ -146,6 +148,7 @@ export class PrismaAttemptRepository implements IAttemptRepository {
           selectedOptionId: answer.selectedOptionKey,
           flagged: answer.flagged,
           answeredAt: answer.answeredAt,
+          confirmedAt: answer.confirmedAt,
         },
       ]),
     );

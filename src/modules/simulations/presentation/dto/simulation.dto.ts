@@ -23,8 +23,9 @@ export class CreateSimulationDto {
   @MaxLength(120)
   title?: string | null;
 
-  @IsIn(['exam'])
-  mode!: 'exam';
+  /** exam: answer key at the end; study: graded after each confirmed answer, never timed. */
+  @IsIn(['exam', 'study'])
+  mode!: 'exam' | 'study';
 
   @IsInt()
   @Min(1)

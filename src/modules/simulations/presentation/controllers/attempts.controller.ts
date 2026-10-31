@@ -33,6 +33,10 @@ import {
   IGetAttemptUseCase,
 } from '../../application/use-cases/get-attempt.use-case';
 import {
+  CONFIRM_ANSWER_USE_CASE,
+  IConfirmAnswerUseCase,
+} from '../../application/use-cases/confirm-answer.use-case';
+import {
   ISaveAnswerUseCase,
   SAVE_ANSWER_USE_CASE,
 } from '../../application/use-cases/save-answer.use-case';
@@ -40,7 +44,7 @@ import {
   IStartAttemptUseCase,
   START_ATTEMPT_USE_CASE,
 } from '../../application/use-cases/start-attempt.use-case';
-import { SaveAnswerDto } from '../dto/answer.dto';
+import { ConfirmAnswerDto, ReviewSimulationDto, SaveAnswerDto } from '../dto/answer.dto';
 
 // Exam data is never cached (API contract: no-store on exams and results).
 @ApiTags('Provas')
@@ -51,6 +55,7 @@ export class AttemptsController {
     @Inject(START_ATTEMPT_USE_CASE) private readonly startAttempt: IStartAttemptUseCase,
     @Inject(GET_ATTEMPT_USE_CASE) private readonly getAttempt: IGetAttemptUseCase,
     @Inject(SAVE_ANSWER_USE_CASE) private readonly saveAnswer: ISaveAnswerUseCase,
+    @Inject(CONFIRM_ANSWER_USE_CASE) private readonly confirmAnswer: IConfirmAnswerUseCase,
     @Inject(FINISH_ATTEMPT_USE_CASE) private readonly finishAttempt: IFinishAttemptUseCase,
     @Inject(GET_ATTEMPT_RESULT_USE_CASE) private readonly getResult: IGetAttemptResultUseCase,
     @Inject(CREATE_REVIEW_SIMULATION_USE_CASE)
@@ -99,6 +104,26 @@ export class AttemptsController {
     return result.value;
   }
 
+  /** Study mode: locks the answer and returns its grading. 409 NOT_STUDY_MODE in exam mode. */
+  @Post('attempts/:id/answers/:questionId/confirm')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async confirm(
+    @CurrentUser() user: AccessTokenClaims,
+    @Param('id', new ParseUUIDPipe()) attemptId: string,
+    @Param('questionId', new ParseUUIDPipe()) questionId: string,
+    @Body() dto: ConfirmAnswerDto,
+  ) {
+    const result = await this.confirmAnswer.execute({
+      userId: user.sub,
+      attemptId,
+      questionId,
+      selectedOptionId: dto.selectedOptionId,
+    });
+    if (result.isFailure) throw new DomainException(result.error);
+    return result.value;
+  }
+
   @Post('attempts/:id/finish')
   @HttpCode(HttpStatus.OK)
   @Header('Cache-Control', 'no-store')
@@ -123,14 +148,21 @@ export class AttemptsController {
     return result.value;
   }
 
-  /** New simulation with the wrong and blank questions of a finished attempt (201). */
+  /**
+   * New simulation from a finished attempt (201): its wrong and blank questions, or all of them,
+   * in exam or study mode.
+   */
   @Post('attempts/:id/review-simulation')
   @HttpCode(HttpStatus.CREATED)
   async review(
     @CurrentUser() user: AccessTokenClaims,
     @Param('id', new ParseUUIDPipe()) attemptId: string,
+    @Body() dto: ReviewSimulationDto,
   ) {
-    const result = await this.createReview.execute(user.sub, attemptId);
+    const result = await this.createReview.execute(user.sub, attemptId, {
+      mode: dto?.mode,
+      questions: dto?.questions,
+    });
     if (result.isFailure) throw new DomainException(result.error);
     return result.value;
   }

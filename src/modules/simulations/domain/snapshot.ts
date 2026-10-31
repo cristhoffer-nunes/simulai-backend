@@ -9,6 +9,8 @@ export interface QuestionSnapshot {
   options: { id: string; text: string }[];
   correctOptionId: string;
   explanation: string;
+  /** Where the question came from (chapter, page…); missing in copies made before it existed. */
+  sourceReference?: string | null;
   subjectId: string;
   subjectName: string;
   topicId: string | null;

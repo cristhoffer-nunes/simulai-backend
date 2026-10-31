@@ -5,6 +5,7 @@ import {
   Simulation,
   SimulationConfiguration,
   SimulationDifficulty,
+  SimulationMode,
   SimulationStatus,
 } from '../domain/simulation.entity';
 import {
@@ -57,7 +58,7 @@ export class PrismaSimulationRepository implements ISimulationRepository {
       id: row.id,
       ownerUserId: row.ownerUserId,
       title: row.title,
-      mode: 'exam',
+      mode: row.mode as SimulationMode,
       status: row.status as SimulationStatus,
       difficulty: row.difficulty as SimulationDifficulty,
       timed: row.timed,
@@ -126,6 +127,7 @@ export class PrismaSimulationRepository implements ISimulationRepository {
       return {
         id: row.id,
         title: row.title,
+        mode: row.mode as SimulationMode,
         status: row.status as SimulationStatus,
         difficulty: row.difficulty as SimulationDifficulty,
         questionCount: row.questionCount,

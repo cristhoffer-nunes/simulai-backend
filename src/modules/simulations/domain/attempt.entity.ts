@@ -13,6 +13,8 @@ export interface AttemptAnswer {
   /** "Revisar depois": a reminder for the student; never affects the score. */
   flagged: boolean;
   answeredAt: Date;
+  /** Study mode: when the answer was confirmed and graded. From then on it cannot change. */
+  confirmedAt: Date | null;
 }
 
 export interface AttemptScore {
@@ -37,7 +39,7 @@ export interface AttemptProps {
 }
 
 export type AnswerRejection =
-  'FINISHED' | 'DEADLINE_PASSED' | 'UNKNOWN_QUESTION' | 'UNKNOWN_OPTION';
+  'FINISHED' | 'DEADLINE_PASSED' | 'UNKNOWN_QUESTION' | 'UNKNOWN_OPTION' | 'CONFIRMED';
 
 /** RN-024: correct / total × 100 with two decimals; blanks count in the total, no penalty. */
 export function scoreOf(
@@ -138,28 +140,79 @@ export class Attempt {
     return this.props.expiresAt !== null && now.getTime() >= this.props.expiresAt.getTime();
   }
 
-  /** RN-021: save, change or clear (null) while active and before the deadline. */
+  /**
+   * RN-021: save, change or clear (null) while active and before the deadline. A confirmed answer
+   * (study mode) is final.
+   */
   answer(
     questions: readonly SimulationQuestion[],
     simulationQuestionId: string,
     selectedOptionId: string | null,
     now = new Date(),
   ): Result<AttemptAnswer, AnswerRejection> {
-    if (!this.isActive) return Result.fail('FINISHED');
-    if (this.isPastDeadline(now)) return Result.fail('DEADLINE_PASSED');
+    const checked = this.checkAnswer(questions, simulationQuestionId, selectedOptionId, now);
+    if (checked) return Result.fail(checked);
+    const current = this.props.answers.get(simulationQuestionId);
+    if (current?.confirmedAt) return Result.fail('CONFIRMED');
+    const answer = {
+      simulationQuestionId,
+      selectedOptionId,
+      flagged: current?.flagged ?? false,
+      answeredAt: now,
+      confirmedAt: null,
+    };
+    this.props.answers.set(simulationQuestionId, answer);
+    this.changed.add(simulationQuestionId);
+    return Result.ok(answer);
+  }
+
+  /**
+   * Study mode: saves the answer and locks it, so the answer key can be shown right away.
+   * Confirming the same option again returns the stored answer (a retried request).
+   */
+  confirm(
+    questions: readonly SimulationQuestion[],
+    simulationQuestionId: string,
+    selectedOptionId: string,
+    now = new Date(),
+  ): Result<AttemptAnswer, AnswerRejection> {
+    const checked = this.checkAnswer(questions, simulationQuestionId, selectedOptionId, now);
+    if (checked) return Result.fail(checked);
+    const current = this.props.answers.get(simulationQuestionId);
+    if (current?.confirmedAt) {
+      return current.selectedOptionId === selectedOptionId
+        ? Result.ok(current)
+        : Result.fail('CONFIRMED');
+    }
+    const answer = {
+      simulationQuestionId,
+      selectedOptionId,
+      flagged: current?.flagged ?? false,
+      answeredAt: now,
+      confirmedAt: now,
+    };
+    this.props.answers.set(simulationQuestionId, answer);
+    this.changed.add(simulationQuestionId);
+    return Result.ok(answer);
+  }
+
+  private checkAnswer(
+    questions: readonly SimulationQuestion[],
+    simulationQuestionId: string,
+    selectedOptionId: string | null,
+    now: Date,
+  ): AnswerRejection | null {
+    if (!this.isActive) return 'FINISHED';
+    if (this.isPastDeadline(now)) return 'DEADLINE_PASSED';
     const question = questions.find((item) => item.id === simulationQuestionId);
-    if (!question) return Result.fail('UNKNOWN_QUESTION');
+    if (!question) return 'UNKNOWN_QUESTION';
     if (
       selectedOptionId !== null &&
       !question.snapshot.options.some((option) => option.id === selectedOptionId)
     ) {
-      return Result.fail('UNKNOWN_OPTION');
+      return 'UNKNOWN_OPTION';
     }
-    const flagged = this.props.answers.get(simulationQuestionId)?.flagged ?? false;
-    const answer = { simulationQuestionId, selectedOptionId, flagged, answeredAt: now };
-    this.props.answers.set(simulationQuestionId, answer);
-    this.changed.add(simulationQuestionId);
-    return Result.ok(answer);
+    return null;
   }
 
   /** Marks or unmarks a question to review later, with the same rules as answering. */
@@ -180,6 +233,7 @@ export class Attempt {
       selectedOptionId: current?.selectedOptionId ?? null,
       flagged,
       answeredAt: current?.answeredAt ?? now,
+      confirmedAt: current?.confirmedAt ?? null,
     };
     this.props.answers.set(simulationQuestionId, answer);
     this.changed.add(simulationQuestionId);

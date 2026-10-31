@@ -74,6 +74,7 @@ export class PrismaQuestionPoolAdapter implements IQuestionPoolPort {
           options: row.options.map((option) => ({ id: option.optionKey, text: option.text })),
           correctOptionId: row.options.find((option) => option.isCorrect)?.optionKey ?? '',
           explanation: row.explanation,
+          sourceReference: row.sourceReference,
           subjectId: row.subjectId,
           subjectName: row.subject.name,
           topicId: row.topicId,

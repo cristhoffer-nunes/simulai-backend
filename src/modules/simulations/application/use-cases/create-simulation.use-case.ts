@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AppError, ExamErrors, ResourceErrors } from '../../../../shared/errors/app-error';
 import { Result } from '../../../../shared/result/result';
 import { balancedDistribution, shuffle } from '../../domain/distribution';
-import { Simulation, SimulationDifficulty } from '../../domain/simulation.entity';
+import { Simulation, SimulationDifficulty, SimulationMode } from '../../domain/simulation.entity';
 import { ISimulationRepository, SIMULATION_REPOSITORY } from '../../domain/simulation.repository';
 import { SimulationView, toSimulationView } from '../dto/simulation-views';
 import { IQuestionPoolPort, PoolFilter, QUESTION_POOL } from '../ports/question-pool.port';
@@ -10,6 +10,8 @@ import { IQuestionPoolPort, PoolFilter, QUESTION_POOL } from '../ports/question-
 export interface CreateSimulationInput {
   userId: string;
   title?: string | null;
+  /** Defaults to exam. */
+  mode?: SimulationMode;
   questionCount: number;
   /** In the order the student chose them: decides who gets the remainder (RN-016). */
   subjectIds: string[];
@@ -59,6 +61,12 @@ export class CreateSimulationUseCase implements ICreateSimulationUseCase {
           'OUT_OF_RANGE',
           `Choose between ${subjectIds.length} (one per subject) and ${MAX_QUESTIONS} questions.`,
         ),
+      );
+    }
+    const mode = input.mode ?? 'exam';
+    if (mode === 'study' && input.timed) {
+      return Result.fail(
+        field('timed', 'NOT_ALLOWED', 'Study sessions have no timer: send timed false.'),
       );
     }
     const duration = input.timed ? (input.durationSeconds ?? null) : null;
@@ -116,6 +124,7 @@ export class CreateSimulationUseCase implements ICreateSimulationUseCase {
     const simulation = Simulation.create({
       ownerUserId: input.userId,
       title: title.slice(0, 120),
+      mode,
       difficulty: input.difficulty,
       timed: input.timed,
       durationSeconds: duration,

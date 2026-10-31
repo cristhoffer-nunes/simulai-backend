@@ -21,6 +21,7 @@ export interface GradedQuestion {
   flagged: boolean;
   correctOptionId: string;
   explanation: string;
+  sourceReference: string | null;
   verdict: Verdict;
 }
 
@@ -69,6 +70,7 @@ export function gradeQuestions(
         flagged: answer?.flagged ?? false,
         correctOptionId: snapshot.correctOptionId,
         explanation: snapshot.explanation,
+        sourceReference: snapshot.sourceReference ?? null,
         verdict: verdictOf(selectedOptionId, snapshot.correctOptionId),
       };
     });

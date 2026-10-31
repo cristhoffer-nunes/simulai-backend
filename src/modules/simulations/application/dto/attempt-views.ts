@@ -1,5 +1,6 @@
-import { Attempt, AttemptScore } from '../../domain/attempt.entity';
-import { Simulation } from '../../domain/simulation.entity';
+import { Attempt, AttemptAnswer, AttemptScore } from '../../domain/attempt.entity';
+import { Simulation, SimulationMode } from '../../domain/simulation.entity';
+import { SimulationQuestion } from '../../domain/snapshot';
 
 /** A question as shown during the exam: no answer key, no explanation (RN-019). */
 export interface ExamQuestionView {
@@ -13,10 +14,29 @@ export interface ExamQuestionView {
   topicName: string | null;
 }
 
+/** Study mode: the grading of one confirmed answer (never sent before it is confirmed). */
+export interface AnswerFeedbackView {
+  correct: boolean;
+  correctOptionId: string;
+  explanation: string;
+  sourceReference: string | null;
+}
+
+export interface AttemptAnswerView {
+  questionId: string;
+  selectedOptionId: string | null;
+  flagged: boolean;
+  answeredAt: Date;
+  /** Study mode: confirmed answers are final and carry their feedback. */
+  confirmed: boolean;
+  feedback: AnswerFeedbackView | null;
+}
+
 export interface AttemptView {
   id: string;
   simulationId: string;
   title: string;
+  mode: SimulationMode;
   attemptNumber: number;
   status: string;
   startedAt: Date;
@@ -27,12 +47,7 @@ export interface AttemptView {
   serverNow: Date;
   totalQuestions: number;
   questions: ExamQuestionView[];
-  answers: {
-    questionId: string;
-    selectedOptionId: string | null;
-    flagged: boolean;
-    answeredAt: Date;
-  }[];
+  answers: AttemptAnswerView[];
   result: AttemptScore | null;
 }
 
@@ -41,6 +56,29 @@ export interface AttemptSummary extends AttemptScore {
   status: string;
   finishReason: string | null;
   finishedAt: Date | null;
+}
+
+export function toAnswerView(
+  answer: AttemptAnswer,
+  question: SimulationQuestion | undefined,
+): AttemptAnswerView {
+  const confirmed = answer.confirmedAt !== null && question !== undefined;
+  return {
+    questionId: answer.simulationQuestionId,
+    selectedOptionId: answer.selectedOptionId,
+    flagged: answer.flagged,
+    answeredAt: answer.answeredAt,
+    confirmed,
+    feedback:
+      confirmed && question
+        ? {
+            correct: answer.selectedOptionId === question.snapshot.correctOptionId,
+            correctOptionId: question.snapshot.correctOptionId,
+            explanation: question.snapshot.explanation,
+            sourceReference: question.snapshot.sourceReference ?? null,
+          }
+        : null,
+  };
 }
 
 export function toAttemptView(
@@ -53,6 +91,7 @@ export function toAttemptView(
     id: attempt.id,
     simulationId: simulation.id,
     title: simulation.title,
+    mode: simulation.mode,
     attemptNumber,
     status: attempt.status,
     startedAt: attempt.startedAt,
@@ -71,12 +110,12 @@ export function toAttemptView(
       topicId: question.snapshot.topicId,
       topicName: question.snapshot.topicName,
     })),
-    answers: [...attempt.answers.values()].map((answer) => ({
-      questionId: answer.simulationQuestionId,
-      selectedOptionId: answer.selectedOptionId,
-      flagged: answer.flagged,
-      answeredAt: answer.answeredAt,
-    })),
+    answers: [...attempt.answers.values()].map((answer) =>
+      toAnswerView(
+        answer,
+        simulation.questions.find((question) => question.id === answer.simulationQuestionId),
+      ),
+    ),
     result: attempt.score,
   };
 }

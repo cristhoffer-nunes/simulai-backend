@@ -1,8 +1,14 @@
-import { Simulation, SimulationDifficulty, SimulationStatus } from './simulation.entity';
+import {
+  Simulation,
+  SimulationDifficulty,
+  SimulationMode,
+  SimulationStatus,
+} from './simulation.entity';
 
 export interface SimulationListItem {
   id: string;
   title: string;
+  mode: SimulationMode;
   status: SimulationStatus;
   difficulty: SimulationDifficulty;
   questionCount: number;

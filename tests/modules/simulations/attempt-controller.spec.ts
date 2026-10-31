@@ -14,6 +14,7 @@ describe('AttemptsController', () => {
   it('delegates with the authenticated student', async () => {
     expect(Reflect.getMetadata(PERMISSIONS_KEY, AttemptsController)).toEqual(['study.access']);
     const review = ok({ id: 'sim-2' });
+    const confirm = ok({ questionId: 'q', confirmed: true });
     const [start, get, save, finish, result] = [
       ok({ id: 'a' }),
       ok({ id: 'a' }),
@@ -25,6 +26,7 @@ describe('AttemptsController', () => {
       start as never,
       get as never,
       save as never,
+      confirm as never,
       finish as never,
       result as never,
       review as never,
@@ -44,16 +46,32 @@ describe('AttemptsController', () => {
     expect(save.execute).toHaveBeenLastCalledWith(
       expect.objectContaining({ selectedOptionId: undefined, flagged: true }),
     );
+    expect(await controller.confirm(user, 'a', 'q', { selectedOptionId: 'B' })).toEqual({
+      questionId: 'q',
+      confirmed: true,
+    });
+    expect(confirm.execute).toHaveBeenCalledWith({
+      userId: 'u1',
+      attemptId: 'a',
+      questionId: 'q',
+      selectedOptionId: 'B',
+    });
     await controller.finish(user, 'a');
     expect(finish.execute).toHaveBeenCalledWith('u1', 'a');
     await controller.result(user, 'a');
     expect(result.execute).toHaveBeenCalledWith('u1', 'a');
-    expect(await controller.review(user, 'a')).toEqual({ id: 'sim-2' });
-    expect(review.execute).toHaveBeenCalledWith('u1', 'a');
+    expect(await controller.review(user, 'a', {})).toEqual({ id: 'sim-2' });
+    expect(review.execute).toHaveBeenCalledWith('u1', 'a', {
+      mode: undefined,
+      questions: undefined,
+    });
+    await controller.review(user, 'a', { mode: 'exam', questions: 'all' });
+    expect(review.execute).toHaveBeenLastCalledWith('u1', 'a', { mode: 'exam', questions: 'all' });
   });
 
   it('maps failures', async () => {
     const controller = new AttemptsController(
+      fail() as never,
       fail() as never,
       fail() as never,
       fail() as never,
@@ -66,8 +84,11 @@ describe('AttemptsController', () => {
     await expect(
       controller.answer(user, 'a', 'q', { selectedOptionId: 'A' }),
     ).rejects.toBeInstanceOf(DomainException);
+    await expect(
+      controller.confirm(user, 'a', 'q', { selectedOptionId: 'A' }),
+    ).rejects.toBeInstanceOf(DomainException);
     await expect(controller.finish(user, 'a')).rejects.toBeInstanceOf(DomainException);
     await expect(controller.result(user, 'a')).rejects.toBeInstanceOf(DomainException);
-    await expect(controller.review(user, 'a')).rejects.toBeInstanceOf(DomainException);
+    await expect(controller.review(user, 'a', {})).rejects.toBeInstanceOf(DomainException);
   });
 });

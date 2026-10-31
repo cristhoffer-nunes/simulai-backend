@@ -11,6 +11,7 @@ export interface AttemptResultView {
   attemptId: string;
   simulationId: string;
   title: string;
+  mode: 'exam' | 'study';
   attemptNumber: number;
   attemptCount: number;
   status: string;

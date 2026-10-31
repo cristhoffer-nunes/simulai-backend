@@ -53,6 +53,7 @@ export class PrismaPerformanceQuery implements IPerformanceQuery {
           simulation: {
             select: {
               title: true,
+              mode: true,
               questionCount: true,
               durationSeconds: true,
               configuration: true,
@@ -87,6 +88,7 @@ export class PrismaPerformanceQuery implements IPerformanceQuery {
         attemptId: row.id,
         simulationId: row.simulationId,
         title: row.simulation.title,
+        mode: row.simulation.mode as 'exam' | 'study',
         subjectNames: configuration.subjectIds.map((id) => configuration.subjectNames?.[id] ?? ''),
         attemptNumber: numberOf.get(row.id) ?? 1,
         status: row.status,

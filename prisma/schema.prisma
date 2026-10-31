@@ -293,6 +293,7 @@ model Simulation {
   id              String   @id @default(uuid()) @db.Uuid
   ownerUserId     String   @map("owner_user_id") @db.Uuid
   title           String   @db.VarChar(120)
+  /// "exam": gabarito no final; "study": correção a cada resposta confirmada, sem cronômetro.
   mode            String   @default("exam")
   status          String   @default("ready")
   questionCount   Int      @map("question_count")
@@ -359,14 +360,16 @@ model SimulationAttempt {
 /// simulation_id é redundante de propósito: as FKs compostas garantem que a questão respondida
 /// pertence ao mesmo simulado da tentativa (03_DATA_MODEL, "Integridade crítica").
 model AttemptAnswer {
-  id                   String   @id @default(uuid()) @db.Uuid
-  attemptId            String   @map("attempt_id") @db.Uuid
-  simulationId         String   @map("simulation_id") @db.Uuid
-  simulationQuestionId String   @map("simulation_question_id") @db.Uuid
-  selectedOptionKey    String?  @map("selected_option_key") @db.VarChar(1)
+  id                   String    @id @default(uuid()) @db.Uuid
+  attemptId            String    @map("attempt_id") @db.Uuid
+  simulationId         String    @map("simulation_id") @db.Uuid
+  simulationQuestionId String    @map("simulation_question_id") @db.Uuid
+  selectedOptionKey    String?   @map("selected_option_key") @db.VarChar(1)
   /// "Revisar depois": lembrete do aluno durante a prova; não afeta a nota.
-  flagged              Boolean  @default(false)
-  answeredAt           DateTime @map("answered_at") @db.Timestamptz
+  flagged              Boolean   @default(false)
+  answeredAt           DateTime  @map("answered_at") @db.Timestamptz
+  /// Modo estudo: quando a resposta foi confirmada (a partir daí não muda e a correção é mostrada).
+  confirmedAt          DateTime? @map("confirmed_at") @db.Timestamptz
 
   attempt            SimulationAttempt  @relation(fields: [attemptId, simulationId], references: [id, simulationId], onDelete: Cascade)
   simulationQuestion SimulationQuestion @relation(fields: [simulationQuestionId, simulationId], references: [id, simulationId], onDelete: Cascade)

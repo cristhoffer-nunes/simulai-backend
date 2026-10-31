@@ -2,13 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AppError, ExamErrors, ResourceErrors } from '../../../../shared/errors/app-error';
 import { Result } from '../../../../shared/result/result';
 import { ATTEMPT_REPOSITORY, IAttemptRepository } from '../../domain/attempt.repository';
-import { reviewSimulationFrom } from '../../domain/review';
+import { ReviewOptions, reviewSimulationFrom } from '../../domain/review';
 import { Simulation } from '../../domain/simulation.entity';
 import { ISimulationRepository, SIMULATION_REPOSITORY } from '../../domain/simulation.repository';
 import { SimulationView, toSimulationView } from '../dto/simulation-views';
 
 export interface ICreateReviewSimulationUseCase {
-  execute(userId: string, attemptId: string): Promise<Result<SimulationView, AppError>>;
+  execute(
+    userId: string,
+    attemptId: string,
+    options?: Partial<ReviewOptions>,
+  ): Promise<Result<SimulationView, AppError>>;
 }
 
 export const CREATE_REVIEW_SIMULATION_USE_CASE = Symbol('CREATE_REVIEW_SIMULATION_USE_CASE');
@@ -21,7 +25,11 @@ export class CreateReviewSimulationUseCase implements ICreateReviewSimulationUse
     @Inject(ATTEMPT_REPOSITORY) private readonly attempts: IAttemptRepository,
   ) {}
 
-  async execute(userId: string, attemptId: string): Promise<Result<SimulationView, AppError>> {
+  async execute(
+    userId: string,
+    attemptId: string,
+    options: Partial<ReviewOptions> = {},
+  ): Promise<Result<SimulationView, AppError>> {
     let attempt = await this.attempts.findOwned(userId, attemptId);
     if (!attempt) return Result.fail(ResourceErrors.notFound('Attempt'));
     const simulation = await this.simulations.findOwned(userId, attempt.simulationId);
@@ -35,7 +43,10 @@ export class CreateReviewSimulationUseCase implements ICreateReviewSimulationUse
     }
     if (attempt.isActive) return Result.fail(ExamErrors.attemptInProgress());
 
-    const plan = reviewSimulationFrom(simulation, attempt);
+    const plan = reviewSimulationFrom(simulation, attempt, {
+      mode: options.mode ?? simulation.mode,
+      questions: options.questions ?? 'missed',
+    });
     if (plan.isFailure) {
       return Result.fail(ResourceErrors.conflict('Every question was right: nothing to review.'));
     }

@@ -1,11 +1,11 @@
-import { Simulation } from '../../domain/simulation.entity';
+import { Simulation, SimulationMode } from '../../domain/simulation.entity';
 import { SimulationListItem } from '../../domain/simulation.repository';
 
 /** Simulation metadata — never the answer key (RN-019). */
 export interface SimulationView {
   id: string;
   title: string;
-  mode: 'exam';
+  mode: SimulationMode;
   status: string;
   difficulty: string;
   questionCount: number;
