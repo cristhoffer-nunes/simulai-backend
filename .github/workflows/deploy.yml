@@ -107,8 +107,12 @@ jobs:
         run: |
           for attempt in $(seq 1 36); do
             body=$(curl -fsS --max-time 10 -H 'Cache-Control: no-cache' "$HEALTH_URL?t=$(date +%s)" 2>/dev/null || true)
+            # The other service may predate version reporting (version null): then it only has to be up.
             if echo "$body" | jq -e --arg s "$SELF_KEY" --arg sv "$SELF_TAG" --arg o "$OTHER_KEY" --arg ov "$OTHER_TAG" \
-                '.status == "ok" and .[$s].version == $sv and .[$o].version == $ov' >/dev/null 2>&1; then
+                '.status == "ok" and .[$s].version == $sv and (.[$o].version == $ov or .[$o].version == null)' >/dev/null 2>&1; then
+              if echo "$body" | jq -e --arg o "$OTHER_KEY" '.[$o].version == null' >/dev/null; then
+                echo "::warning::$OTHER_IMAGE does not report its version yet (older than version reporting); checked only that it is up."
+              fi
               echo "No ar: $body"; exit 0
             fi
             echo "Tentativa $attempt: ${body:-sem resposta}"; sleep 10
