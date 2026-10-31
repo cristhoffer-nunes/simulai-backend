@@ -282,3 +282,44 @@ describe('Creating study sessions', () => {
     );
   });
 });
+
+describe('Simulations from chosen questions', () => {
+  const base = { userId: 'u1', questionIds: ['q101', 'q1', 'q2'] };
+
+  it('keeps the order, groups subjects and defaults to an untimed study session', async () => {
+    const simulations = fakeSimulations();
+    const useCase = new CreateSimulationUseCase(fakePool(), simulations);
+    const created = (await useCase.fromQuestions(base)).value;
+    expect(created).toEqual(
+      expect.objectContaining({
+        mode: 'study',
+        timed: false,
+        questionCount: 3,
+        title: 'Cardiologia e Anatomia',
+      }),
+    );
+    expect(created.distribution).toEqual([
+      { subjectId: 's2', subjectName: 'Cardiologia', questionCount: 1 },
+      { subjectId: 's1', subjectName: 'Anatomia', questionCount: 2 },
+    ]);
+    const stored = simulations.create.mock.calls[0]![0];
+    expect(stored.questions.map((question) => question.sourceQuestionId)).toEqual([
+      'q101',
+      'q1',
+      'q2',
+    ]);
+    expect(
+      (await useCase.fromQuestions({ ...base, mode: 'exam', title: ' Teste ' })).value,
+    ).toEqual(expect.objectContaining({ mode: 'exam', title: 'Teste' }));
+  });
+
+  it('refuses empty lists and questions that are not in the bank', async () => {
+    const pool = fakePool();
+    const useCase = new CreateSimulationUseCase(pool, fakeSimulations());
+    expect((await useCase.fromQuestions({ ...base, questionIds: [] })).error.kind).toBe(
+      'VALIDATION_ERROR',
+    );
+    pool.snapshots.mockResolvedValueOnce(new Map());
+    expect((await useCase.fromQuestions(base)).error.kind).toBe('NOT_FOUND');
+  });
+});

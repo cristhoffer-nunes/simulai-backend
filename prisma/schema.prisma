@@ -43,6 +43,7 @@ model User {
   imports        QuestionImport[]
   simulations    Simulation[]
   attempts       SimulationAttempt[]
+  flashcards     FlashcardProgress[]
 
   @@map("users")
   @@schema("simulai_service")
@@ -210,6 +211,7 @@ model Question {
   sourceImport        QuestionImport?      @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
   options             QuestionOption[]
   collections         CollectionQuestion[]
+  flashcards          FlashcardProgress[]
   simulationQuestions SimulationQuestion[]
 
   @@index([ownerUserId, status])
@@ -376,5 +378,24 @@ model AttemptAnswer {
 
   @@unique([attemptId, simulationQuestionId])
   @@map("attempt_answers")
+  @@schema("simulai_service")
+}
+
+// ─── Flashcards ─────────────────────────────────────────────────────────────────────────────────
+
+/// O que o aluno já separou de cada cartão (questão do banco). Sem linha = cartão novo.
+model FlashcardProgress {
+  userId     String   @map("user_id") @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  /// "learning" (ainda aprendendo) ou "known" (já sei).
+  status     String
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+  @@index([questionId])
+  @@map("flashcard_progress")
   @@schema("simulai_service")
 }

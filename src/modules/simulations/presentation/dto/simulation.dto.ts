@@ -61,6 +61,26 @@ export class CreateSimulationDto {
   collectionId?: string | null;
 }
 
+/** A simulation with exactly these bank questions (flashcards → "Testar no modo estudo"). */
+export class CreateFromQuestionsDto {
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(120)
+  title?: string | null;
+
+  @IsOptional()
+  @IsIn(['exam', 'study'])
+  mode?: 'exam' | 'study';
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(200)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  questionIds!: string[];
+}
+
 export class AvailabilityQueryDto {
   @IsOptional()
   @IsIn(['all', 'easy', 'medium', 'hard'])

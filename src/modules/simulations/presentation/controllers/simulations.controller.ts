@@ -41,6 +41,7 @@ import {
   CreateSimulationDto,
   ListSimulationsQueryDto,
   UpdateSimulationDto,
+  CreateFromQuestionsDto,
 } from '../dto/simulation.dto';
 
 @ApiTags('Simulados')
@@ -71,6 +72,15 @@ export class SimulationsController {
   @HttpCode(HttpStatus.CREATED)
   async create(@CurrentUser() user: AccessTokenClaims, @Body() dto: CreateSimulationDto) {
     const result = await this.createSimulation.execute({ userId: user.sub, ...dto });
+    if (result.isFailure) throw new DomainException(result.error);
+    return result.value;
+  }
+
+  /** Exactly these questions, in this order, never timed; study mode unless told otherwise. */
+  @Post('from-questions')
+  @HttpCode(HttpStatus.CREATED)
+  async fromQuestions(@CurrentUser() user: AccessTokenClaims, @Body() dto: CreateFromQuestionsDto) {
+    const result = await this.createSimulation.fromQuestions({ userId: user.sub, ...dto });
     if (result.isFailure) throw new DomainException(result.error);
     return result.value;
   }

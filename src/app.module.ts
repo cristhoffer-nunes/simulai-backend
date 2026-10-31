@@ -8,6 +8,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { HealthModule } from './health/health.module';
 import { QuestionBankModule } from './modules/question-bank/question-bank.module';
 import { SimulationsModule } from './modules/simulations/simulations.module';
+import { FlashcardsModule } from './modules/flashcards/flashcards.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SimulationsModule } from './modules/simulations/simulations.module';
     IdentityModule,
     QuestionBankModule,
     SimulationsModule,
+    FlashcardsModule,
     HealthModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemDetailsFilter }],

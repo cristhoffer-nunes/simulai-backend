@@ -22,8 +22,17 @@ export interface CreateSimulationInput {
   collectionId?: string | null;
 }
 
+/** A simulation with exactly these bank questions, in this order (e.g. flashcards to test). */
+export interface CreateFromQuestionsInput {
+  userId: string;
+  title?: string | null;
+  mode?: SimulationMode;
+  questionIds: string[];
+}
+
 export interface ICreateSimulationUseCase {
   execute(input: CreateSimulationInput): Promise<Result<SimulationView, AppError>>;
+  fromQuestions(input: CreateFromQuestionsInput): Promise<Result<SimulationView, AppError>>;
 }
 
 export const CREATE_SIMULATION_USE_CASE = Symbol('CREATE_SIMULATION_USE_CASE');
@@ -138,6 +147,49 @@ export class CreateSimulationUseCase implements ICreateSimulationUseCase {
         ),
       },
       picked: order.map((id) => ({ sourceQuestionId: id, snapshot: snapshots.get(id)! })),
+    });
+    await this.simulations.create(simulation);
+    return Result.ok(toSimulationView(simulation));
+  }
+
+  async fromQuestions(input: CreateFromQuestionsInput): Promise<Result<SimulationView, AppError>> {
+    const ids = [...new Set(input.questionIds)];
+    if (ids.length === 0 || ids.length > MAX_QUESTIONS) {
+      return Result.fail(
+        field('questionIds', 'OUT_OF_RANGE', `Choose between 1 and ${MAX_QUESTIONS} questions.`),
+      );
+    }
+    const snapshots = await this.pool.snapshots(input.userId, ids);
+    if (snapshots.size !== ids.length) {
+      // Archived, deleted or someone else's: the list is stale.
+      return Result.fail(ResourceErrors.notFound('Question'));
+    }
+    const subjectIds: string[] = [];
+    const perSubject: Record<string, number> = {};
+    const subjectNames: Record<string, string> = {};
+    for (const id of ids) {
+      const { subjectId, subjectName } = snapshots.get(id)!;
+      if (!(subjectId in perSubject)) subjectIds.push(subjectId);
+      perSubject[subjectId] = (perSubject[subjectId] ?? 0) + 1;
+      subjectNames[subjectId] = subjectName;
+    }
+    const title =
+      input.title?.trim() || this.defaultTitle(subjectIds.map((id) => subjectNames[id] ?? ''));
+    const simulation = Simulation.create({
+      ownerUserId: input.userId,
+      title: title.slice(0, 120),
+      mode: input.mode ?? 'study',
+      difficulty: 'all',
+      timed: false,
+      durationSeconds: null,
+      configuration: {
+        subjectIds,
+        distribution: 'balanced',
+        collectionId: null,
+        perSubject,
+        subjectNames,
+      },
+      picked: ids.map((id) => ({ sourceQuestionId: id, snapshot: snapshots.get(id)! })),
     });
     await this.simulations.create(simulation);
     return Result.ok(toSimulationView(simulation));

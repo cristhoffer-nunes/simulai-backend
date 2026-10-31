@@ -8,6 +8,7 @@ const user = { sub: 'u1' } as never;
 const ok = (value: unknown) => ({ execute: jest.fn().mockResolvedValue(Result.ok(value)) });
 const fail = () => ({
   execute: jest.fn().mockResolvedValue(Result.fail(AppError.validation('x'))),
+  fromQuestions: jest.fn().mockResolvedValue(Result.fail(AppError.validation('x'))),
 });
 
 describe('SimulationsController', () => {
@@ -15,7 +16,7 @@ describe('SimulationsController', () => {
     expect(Reflect.getMetadata(PERMISSIONS_KEY, SimulationsController)).toEqual(['study.access']);
     const [availability, create, list, get, status] = [
       ok({ subjects: [] }),
-      ok({ id: 's' }),
+      { ...ok({ id: 's' }), fromQuestions: jest.fn().mockResolvedValue(Result.ok({ id: 'f' })) },
       ok({ items: [] }),
       ok({ id: 's' }),
       ok({ id: 's' }),
@@ -41,6 +42,8 @@ describe('SimulationsController', () => {
     });
     await controller.create(user, { mode: 'exam', questionCount: 2 } as never);
     expect(create.execute).toHaveBeenCalledWith({ userId: 'u1', mode: 'exam', questionCount: 2 });
+    expect(await controller.fromQuestions(user, { questionIds: ['q1'] })).toEqual({ id: 'f' });
+    expect(create.fromQuestions).toHaveBeenCalledWith({ userId: 'u1', questionIds: ['q1'] });
     await controller.list(user, { limit: 5 });
     await controller.detail(user, 's');
     await controller.update(user, 's', { status: 'archived' });
@@ -57,6 +60,9 @@ describe('SimulationsController', () => {
     );
     await expect(controller.available(user, {})).rejects.toBeInstanceOf(DomainException);
     await expect(controller.create(user, {} as never)).rejects.toBeInstanceOf(DomainException);
+    await expect(controller.fromQuestions(user, { questionIds: [] })).rejects.toBeInstanceOf(
+      DomainException,
+    );
     await expect(controller.list(user, {})).rejects.toBeInstanceOf(DomainException);
     await expect(controller.detail(user, 's')).rejects.toBeInstanceOf(DomainException);
     await expect(controller.update(user, 's', { status: 'ready' })).rejects.toBeInstanceOf(
